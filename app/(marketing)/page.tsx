@@ -173,13 +173,14 @@ export default function MarketingPage() {
             }}
           >
             <span style={{ display: 'block', marginBottom: '0.04em' }}>
-              <Word delay={0.0}>Repository</Word>
-              <Word delay={0.1}>demos,</Word>
+              <Word delay={0.0}>Ship</Word>
+              <Word delay={0.1}>the</Word>
+              <Word delay={0.2}>demo.</Word>
             </span>
             <span style={{ display: 'block' }}>
-              <Word delay={0.22}>rendered</Word>
-              <Word delay={0.32}>in</Word>
-              <Word delay={0.42} accent>glass.</Word>
+              <Word delay={0.34}>Not</Word>
+              <Word delay={0.44}>just</Word>
+              <Word delay={0.54} accent>the code.</Word>
             </span>
           </h1>
 
@@ -187,7 +188,7 @@ export default function MarketingPage() {
           <motion.p
             initial={{ opacity: 0, y: 28, filter: 'blur(6px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 0.9, delay: 0.62, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.9, delay: 0.74, ease: [0.16, 1, 0.3, 1] }}
             style={{
               fontSize: 20,
               lineHeight: 1.64,
@@ -204,7 +205,7 @@ export default function MarketingPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.82, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.7, delay: 0.94, ease: [0.16, 1, 0.3, 1] }}
             style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}
           >
             <motion.button
@@ -233,7 +234,7 @@ export default function MarketingPage() {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 1.05 }}
+            transition={{ duration: 0.5, delay: 1.16 }}
             style={{ marginTop: 22, fontSize: 14, color: 'rgba(248,251,255,0.38)' }}
           >
             Already have an account?{' '}
@@ -253,12 +254,9 @@ export default function MarketingPage() {
           transition={{ duration: 1, delay: 1.3 }}
           style={{
             position: 'absolute', bottom: 44, left: '50%', transform: 'translateX(-50%)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
           }}
         >
-          <span style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(248,251,255,0.28)', fontWeight: 600 }}>
-            scroll
-          </span>
           <motion.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
