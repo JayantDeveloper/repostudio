@@ -8,34 +8,35 @@ import {
   useTransform,
   useSpring,
   useInView,
-  useMotionValue,
   useMotionTemplate,
 } from 'framer-motion'
 import { signIn } from 'next-auth/react'
 
-// ── Spring presets ────────────────────────────────────────────────────────────
-// "Heavy panel" — large mass, slow to settle
+// ── Spring presets ─────────────────────────────────────────────────────────────
 const HEAVY = { stiffness: 80, damping: 22, mass: 1.6 }
-// "Button" — snappy, light
-const SNAP = { stiffness: 280, damping: 32, mass: 0.6 }
-// "Background mesh" — drifts slowly
-const DRIFT = { stiffness: 40, damping: 18, mass: 2.0 }
+const SNAP  = { stiffness: 280, damping: 32, mass: 0.6 }
+const DRIFT = { stiffness: 40,  damping: 18, mass: 2.0 }
 
-// ── Refractive glass surface ─────────────────────────────────────────────────
-// Applies Apple-style: blur(40px) saturate(180%) + double-border highlight
+// ── Liquid glass surface ───────────────────────────────────────────────────────
 const GLASS: React.CSSProperties = {
   background: 'rgba(255,255,255,0.055)',
   backdropFilter: 'blur(40px) saturate(180%)',
   WebkitBackdropFilter: 'blur(40px) saturate(180%)',
   border: '1px solid rgba(255,255,255,0.14)',
-  // Inner-bevel highlight — the "double-border" trick
   boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.2), 0 8px 40px rgba(0,0,0,0.4)',
 }
 
-// ── SVG icons ─────────────────────────────────────────────────────────────────
+// ── Icons ──────────────────────────────────────────────────────────────────────
+function GitHubIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.03c-3.34.72-4.04-1.61-4.04-1.61-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02.005 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z" />
+    </svg>
+  )
+}
 function IngestIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
@@ -44,45 +45,34 @@ function IngestIcon() {
 }
 function ScriptIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
-      <line x1="10" y1="9" x2="8" y2="9" />
     </svg>
   )
 }
 function RenderIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="23 7 16 12 23 17 23 7" />
       <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
     </svg>
   )
 }
-function ArrowRight() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <polyline points="12 5 19 12 12 19" />
-    </svg>
-  )
-}
 
-// ── Specular shimmer overlay — sweeps across a glass panel on scroll ──────────
+// ── Specular shimmer sweep ─────────────────────────────────────────────────────
 function Shimmer({ scrollProgress }: { scrollProgress: ReturnType<typeof useScroll>['scrollYProgress'] }) {
   const x = useTransform(scrollProgress, [0, 1], ['-120%', '120%'])
   const xSpring = useSpring(x, DRIFT)
-  const bg = useMotionTemplate`linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%)`
+  const bg = useMotionTemplate`linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.07) 50%, transparent 70%)`
   return (
     <motion.div
       aria-hidden
       style={{
-        position: 'absolute',
-        inset: 0,
+        position: 'absolute', inset: 0,
         background: bg,
-        backgroundSize: '200% 100%',
         backgroundPositionX: xSpring,
         pointerEvents: 'none',
         borderRadius: 'inherit',
@@ -92,169 +82,131 @@ function Shimmer({ scrollProgress }: { scrollProgress: ReturnType<typeof useScro
   )
 }
 
-// ── Feature card with heavy spring entrance + hover lift ──────────────────────
-function FeatureCard({ icon, title, body, delay }: { icon: React.ReactNode; title: string; body: string; delay: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref, { once: true, margin: '-60px' })
+// ── Floating word — slides up + deblurs on mount ───────────────────────────────
+function Word({ children, delay, accent = false }: { children: string; delay: number; accent?: boolean }) {
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 48, scale: 0.96 }}
-      animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
-      transition={{ duration: 0.75, delay, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -8, transition: SNAP }}
+    <motion.span
+      initial={{ opacity: 0, y: 56, filter: 'blur(14px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 1.0, delay, ease: [0.16, 1, 0.3, 1] }}
       style={{
-        ...GLASS,
-        borderRadius: 24,
-        padding: 32,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-        gap: 16,
-        cursor: 'default',
-        position: 'relative',
-        overflow: 'hidden',
+        display: 'inline-block',
+        marginRight: '0.22em',
+        background: accent
+          ? 'linear-gradient(150deg, rgba(53,214,255,1) 0%, rgba(120,160,255,0.9) 100%)'
+          : 'linear-gradient(160deg, #ffffff 10%, rgba(210,225,255,0.88) 85%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
       }}
     >
-      {/* Liquid-mask bleed at top — radial fade so glass "bleeds" into background */}
-      <div aria-hidden style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 80,
-        background: 'radial-gradient(ellipse 60% 80% at 50% 0%, rgba(53,214,255,0.1), transparent)',
-        pointerEvents: 'none',
-      }} />
-      <div style={{
-        width: 60, height: 60, borderRadius: 14,
-        background: 'linear-gradient(135deg, rgba(53,214,255,0.22), rgba(47,123,255,0.16))',
-        border: '1px solid rgba(53,214,255,0.2)',
-        boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.18)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'var(--accent-glow)',
-        position: 'relative', zIndex: 2,
-      }}>
-        {icon}
-      </div>
-      <h3 style={{ fontSize: 20, fontWeight: 700, color: '#f8fbff', margin: 0, position: 'relative', zIndex: 2 }}>{title}</h3>
-      <p style={{ color: 'rgba(248,251,255,0.6)', lineHeight: 1.68, margin: 0, position: 'relative', zIndex: 2 }}>{body}</p>
-    </motion.div>
+      {children}
+    </motion.span>
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ───────────────────────────────────────────────────────────────────────
 export default function MarketingPage() {
   const pageRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ target: pageRef, offset: ['start start', 'end end'] })
+  const { scrollY, scrollYProgress } = useScroll()
 
-  // Parallax layers — background moves at ~30% scroll speed (slower)
-  const bgRawY = useTransform(scrollYProgress, [0, 1], ['0%', '28%'])
-  const bgY = useSpring(bgRawY, DRIFT)
+  // Hero text rides up and fades as the user scrolls away — cinematic wipe
+  const heroOpacity = useTransform(scrollY, [0, 380], [1, 0])
+  const heroY       = useTransform(scrollY, [0, 380], [0, -48])
+  const heroYSpring = useSpring(heroY, HEAVY)
 
-  // Glass hero panel moves at ~−10% (slightly counter for depth)
-  const fgRawY = useTransform(scrollYProgress, [0, 1], ['0%', '-10%'])
-  const fgY = useSpring(fgRawY, HEAVY)
+  // Slow-drifting background mesh
+  const bgRawY = useTransform(scrollYProgress, [0, 1], ['0%', '32%'])
+  const bgY    = useSpring(bgRawY, DRIFT)
 
-  const headingRef = useRef<HTMLDivElement>(null)
-  const headingVisible = useInView(headingRef, { once: true })
+  const pipelineRef = useRef<HTMLElement>(null)
+  const pipelineIn  = useInView(pipelineRef, { once: true, margin: '-80px' })
 
-  const howRef = useRef<HTMLElement>(null)
-  const howVisible = useInView(howRef, { once: true, margin: '-80px' })
+  const featuresRef = useRef<HTMLElement>(null)
+  const featuresIn  = useInView(featuresRef, { once: true, margin: '-60px' })
 
   const ctaRef = useRef<HTMLElement>(null)
-  const ctaVisible = useInView(ctaRef, { once: true, margin: '-60px' })
+  const ctaIn  = useInView(ctaRef, { once: true, margin: '-60px' })
 
   return (
-    <div ref={pageRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px 96px', overflow: 'hidden' }}>
+    <div ref={pageRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px 128px', overflow: 'hidden' }}>
 
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', textAlign: 'center', paddingTop: 92, paddingBottom: 88 }}>
-
-        {/* ① Slow-drifting background mesh — "liquid" parallax layer */}
-        <motion.div
-          aria-hidden
-          style={{
-            y: bgY,
-            position: 'absolute', inset: '-40%',
-            zIndex: -1, pointerEvents: 'none',
-          }}
-        >
-          {/* Masking: radial gradient so it "bleeds" not sharp rectangle */}
+      {/* ══ HERO — pure floating typography, no card ════════════════════════════ */}
+      <section
+        style={{
+          position: 'relative',
+          minHeight: '92vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          paddingTop: 80,
+        }}
+      >
+        {/* Parallax background chromatic orbs */}
+        <motion.div aria-hidden style={{ y: bgY, position: 'absolute', inset: '-40%', zIndex: 0, pointerEvents: 'none' }}>
           <div style={{
             position: 'absolute', inset: 0,
             background: `
-              radial-gradient(circle at 18% 30%, rgba(53,214,255,0.30), transparent 42%),
-              radial-gradient(circle at 78% 20%, rgba(47,123,255,0.30), transparent 38%),
-              radial-gradient(circle at 50% 82%, rgba(157,124,255,0.22), transparent 40%)
+              radial-gradient(circle at 16% 28%, rgba(53,214,255,0.28), transparent 42%),
+              radial-gradient(circle at 80% 18%, rgba(47,123,255,0.28), transparent 38%),
+              radial-gradient(circle at 50% 85%, rgba(157,124,255,0.20), transparent 40%)
             `,
-            filter: 'blur(36px)',
+            filter: 'blur(40px)',
             maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 50%, transparent 100%)',
             WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 50%, transparent 100%)',
           }} />
         </motion.div>
 
-        {/* ② Foreground glass panel — slower to settle, heavier feel */}
-        <motion.div ref={headingRef} style={{ y: fgY, position: 'relative', zIndex: 1 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 56, scale: 0.95 }}
-            animate={headingVisible ? { opacity: 1, y: 0, scale: 1 } : {}}
-            transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1] }}
+        {/* Floating text block — scroll-parallaxes up + fades */}
+        <motion.div style={{ y: heroYSpring, opacity: heroOpacity, position: 'relative', zIndex: 1 }}>
+
+          {/* Headline — word-by-word entrance */}
+          <h1
             style={{
-              ...GLASS,
-              borderRadius: 32,
-              display: 'inline-block',
-              padding: '58px 68px',
-              marginBottom: 32,
-              maxWidth: 960,
-              position: 'relative',
-              overflow: 'hidden',
+              fontSize: 'clamp(52px, 8.5vw, 100px)',
+              lineHeight: 1.01,
+              fontWeight: 760,
+              margin: '0 0 30px',
+              letterSpacing: '-0.028em',
             }}
           >
-            {/* ④ Specular shimmer on scroll */}
-            <Shimmer scrollProgress={scrollYProgress} />
+            <span style={{ display: 'block', marginBottom: '0.04em' }}>
+              <Word delay={0.0}>Repository</Word>
+              <Word delay={0.1}>demos,</Word>
+            </span>
+            <span style={{ display: 'block' }}>
+              <Word delay={0.22}>rendered</Word>
+              <Word delay={0.32}>in</Word>
+              <Word delay={0.42} accent>glass.</Word>
+            </span>
+          </h1>
 
-            {/* Liquid bleed mask at bottom of panel */}
-            <div aria-hidden style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: 120,
-              background: 'radial-gradient(ellipse 70% 100% at 50% 100%, rgba(47,123,255,0.12), transparent)',
-              pointerEvents: 'none',
-            }} />
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 28, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.9, delay: 0.62, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              fontSize: 20,
+              lineHeight: 1.64,
+              color: 'rgba(248,251,255,0.58)',
+              maxWidth: 540,
+              margin: '0 auto 44px',
+            }}
+          >
+            Paste a GitHub URL. RepoStudio ingests the repo, writes the script,
+            and renders a polished 30-second product video — automatically.
+          </motion.p>
 
-            <h1 style={{
-              fontSize: 66,
-              lineHeight: 1.03,
-              fontWeight: 760,
-              margin: 0,
-              color: '#f8fbff',
-              letterSpacing: '0.005em',
-              position: 'relative', zIndex: 2,
-              // ④ Specular text-shimmer via background-clip
-              background: 'linear-gradient(160deg, #ffffff 20%, rgba(53,214,255,0.9) 60%, #ffffff 90%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
-              Repository demos,<br />rendered in glass.
-            </h1>
-            <p style={{
-              margin: '22px auto 0',
-              color: 'rgba(248,251,255,0.66)',
-              fontSize: 19,
-              lineHeight: 1.62,
-              maxWidth: 600,
-              position: 'relative', zIndex: 2,
-            }}>
-              Paste a GitHub URL. RepoStudio ingests the repo, writes the script, and renders a
-              polished 30-second product video — automatically.
-            </p>
-          </motion.div>
-
-          {/* Two-button CTA row */}
+          {/* CTAs */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            animate={headingVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.65, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.82, ease: [0.16, 1, 0.3, 1] }}
             style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}
           >
-            {/* Primary — spring physics on hover */}
             <motion.button
               onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
               className="glass-button glass-button-primary"
@@ -262,9 +214,7 @@ export default function MarketingPage() {
               whileTap={{ scale: 0.97, transition: SNAP }}
               style={{ fontSize: 16, padding: '14px 30px', display: 'flex', alignItems: 'center', gap: 10, border: 'none', cursor: 'pointer' }}
             >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.03c-3.34.72-4.04-1.61-4.04-1.61-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02.005 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z" />
-              </svg>
+              <GitHubIcon />
               Start with GitHub
             </motion.button>
 
@@ -282,9 +232,9 @@ export default function MarketingPage() {
 
           <motion.p
             initial={{ opacity: 0 }}
-            animate={headingVisible ? { opacity: 1 } : {}}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            style={{ marginTop: 20, fontSize: 14, color: 'rgba(248,251,255,0.4)' }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 1.05 }}
+            style={{ marginTop: 22, fontSize: 14, color: 'rgba(248,251,255,0.38)' }}
           >
             Already have an account?{' '}
             <button
@@ -295,125 +245,399 @@ export default function MarketingPage() {
             </button>
           </motion.p>
         </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.3 }}
+          style={{
+            position: 'absolute', bottom: 44, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(248,251,255,0.28)', fontWeight: 600 }}>
+            scroll
+          </span>
+          <motion.div
+            animate={{ y: [0, 10, 0] }}
+            transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ width: 1, height: 36, background: 'linear-gradient(to bottom, rgba(53,214,255,0.55), transparent)' }}
+          />
+        </motion.div>
       </section>
 
-      {/* ── How It Works ────────────────────────────────────────────────── */}
-      <section id="how-it-works" ref={howRef} style={{ marginBottom: 84 }}>
+      {/* ══ PIPELINE — vertical numbered timeline, no cards ═════════════════════ */}
+      <section id="how-it-works" ref={pipelineRef} style={{ marginBottom: 128 }}>
+
+        {/* Section header — left-aligned, editorial */}
         <motion.div
-          initial={{ opacity: 0, y: 36 }}
-          animate={howVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          style={{ textAlign: 'center', marginBottom: 48 }}
+          initial={{ opacity: 0, x: -32 }}
+          animate={pipelineIn ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+          style={{ marginBottom: 80 }}
         >
-          <h2 style={{ fontSize: 44, fontWeight: 740, color: '#f8fbff', margin: '0 0 14px', letterSpacing: '-0.015em' }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
+            color: 'rgba(53,214,255,0.65)', textTransform: 'uppercase',
+            display: 'block', marginBottom: 14,
+          }}>
             The Pipeline
+          </span>
+          <h2 style={{
+            fontSize: 'clamp(36px, 5vw, 58px)',
+            fontWeight: 740, color: '#f8fbff', margin: 0,
+            letterSpacing: '-0.022em', lineHeight: 1.06,
+          }}>
+            Three steps.<br />One polished video.
           </h2>
-          <p style={{ color: 'rgba(248,251,255,0.52)', fontSize: 17, maxWidth: 480, margin: '0 auto' }}>
-            From a GitHub URL to a rendered video in three automated stages
-          </p>
         </motion.div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+        {/* Timeline rows */}
+        <div style={{ position: 'relative', paddingLeft: 56 }}>
+
+          {/* Animated vertical connector */}
+          <motion.div
+            initial={{ scaleY: 0 }}
+            animate={pipelineIn ? { scaleY: 1 } : {}}
+            transition={{ duration: 1.4, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              position: 'absolute', left: 11, top: 8, bottom: 48,
+              width: 1,
+              background: 'linear-gradient(to bottom, rgba(53,214,255,0.7), rgba(47,123,255,0.3), transparent)',
+              transformOrigin: 'top',
+            }}
+          />
+
           {[
-            { step: '01', label: 'Paste URL', detail: 'Drop any public GitHub repository URL into the editor. RepoStudio fetches the README and captures live screenshots of the deployed app.' },
-            { step: '02', label: 'Generate Script', detail: 'An AI director reads the repo context and writes a structured scene list — narration, code highlights, timing, and voiceover.' },
-            { step: '03', label: 'Export Video', detail: 'Remotion assembles the scenes with motion, captions, and audio into a 1080p MP4 stored in your dashboard.' },
-          ].map(({ step, label, detail }, i) => (
+            {
+              step: '01',
+              sub: 'Ingest',
+              title: 'Reads the repo. Sees the live app.',
+              detail: 'RepoStudio maps the file tree, fetches the five most significant source files, and screenshots the deployed product with Playwright — so every scene is grounded in what the code actually does.',
+            },
+            {
+              step: '02',
+              sub: 'Script',
+              title: 'An AI director writes the story.',
+              detail: "A product marketer prompt scans your imports and maps them to user-facing claims — 'supabase' becomes 'Real-time Sync', 'framer-motion' becomes 'Fluid Animations'. Nothing is invented.",
+            },
+            {
+              step: '03',
+              sub: 'Render',
+              title: 'Assembled frame-by-frame. Exported in seconds.',
+              detail: 'Remotion composites brand colors, panning screenshots, captions, and narration into a 1080p MP4 — stored in your dashboard, ready to share.',
+            },
+          ].map(({ step, sub, title, detail }, i) => (
             <motion.div
               key={step}
-              initial={{ opacity: 0, y: 32, scale: 0.97 }}
-              animate={howVisible ? { opacity: 1, y: 0, scale: 1 } : {}}
-              transition={{ duration: 0.7, delay: i * 0.13, ease: [0.16, 1, 0.3, 1] }}
-              style={{ ...GLASS, borderRadius: 24, padding: '36px 32px', position: 'relative', overflow: 'hidden' }}
+              initial={{ opacity: 0, x: -40 }}
+              animate={pipelineIn ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.15 + i * 0.2, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '96px 1fr',
+                gap: 48,
+                alignItems: 'flex-start',
+                paddingBottom: i < 2 ? 72 : 0,
+                position: 'relative',
+              }}
             >
-              <div aria-hidden style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: 100,
-                background: 'radial-gradient(ellipse 80% 100% at 50% 0%, rgba(53,214,255,0.09), transparent)',
-                pointerEvents: 'none',
-              }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(53,214,255,0.65)', textTransform: 'uppercase', display: 'block', marginBottom: 14 }}>
-                Step {step}
-              </span>
-              <h3 style={{ fontSize: 22, fontWeight: 700, color: '#f8fbff', margin: '0 0 12px' }}>{label}</h3>
-              <p style={{ color: 'rgba(248,251,255,0.55)', lineHeight: 1.68, margin: 0 }}>{detail}</p>
+              {/* Glowing node on the line */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={pipelineIn ? { scale: 1 } : {}}
+                transition={{ duration: 0.4, delay: 0.3 + i * 0.2, ease: 'backOut' }}
+                style={{
+                  position: 'absolute',
+                  left: -48,
+                  top: 6,
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: 'rgba(53,214,255,0.9)',
+                  boxShadow: '0 0 16px rgba(53,214,255,0.6)',
+                }}
+              />
+
+              {/* Ghost step number — outline only */}
+              <div style={{
+                fontSize: 88,
+                fontWeight: 800,
+                lineHeight: 0.88,
+                color: 'transparent',
+                WebkitTextStroke: '1px rgba(255,255,255,0.09)',
+                letterSpacing: '-0.05em',
+                userSelect: 'none',
+                paddingTop: 2,
+              }}>
+                {step}
+              </div>
+
+              {/* Step content */}
+              <div style={{ paddingTop: 8 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+                  color: 'rgba(53,214,255,0.6)', textTransform: 'uppercase',
+                  display: 'block', marginBottom: 10,
+                }}>
+                  {sub}
+                </span>
+                <h3 style={{
+                  fontSize: 26, fontWeight: 700, color: '#f8fbff',
+                  margin: '0 0 14px', letterSpacing: '-0.015em', lineHeight: 1.2,
+                }}>
+                  {title}
+                </h3>
+                <p style={{ color: 'rgba(248,251,255,0.52)', lineHeight: 1.74, fontSize: 16, margin: 0, maxWidth: 580 }}>
+                  {detail}
+                </p>
+              </div>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* ── Features ────────────────────────────────────────────────────── */}
-      <section id="features" style={{ marginBottom: 84 }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 style={{ fontSize: 44, fontWeight: 740, color: '#f8fbff', margin: '0 0 14px', letterSpacing: '-0.015em' }}>
+      {/* ══ FEATURES — bento grid + stat strip (no numbered steps, no cards grid) */}
+      <section id="features" ref={featuresRef} style={{ marginBottom: 128 }}>
+
+        {/* Section header — right-aligned for contrast with the left-aligned Pipeline header */}
+        <motion.div
+          initial={{ opacity: 0, x: 32 }}
+          animate={featuresIn ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+          style={{ textAlign: 'right', marginBottom: 72 }}
+        >
+          <span style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
+            color: 'rgba(53,214,255,0.65)', textTransform: 'uppercase',
+            display: 'block', marginBottom: 14,
+          }}>
             Why RepoStudio
+          </span>
+          <h2 style={{
+            fontSize: 'clamp(36px, 5vw, 58px)',
+            fontWeight: 740, color: '#f8fbff', margin: 0,
+            letterSpacing: '-0.022em', lineHeight: 1.06,
+          }}>
+            Everything automated.<br />Nothing compromised.
           </h2>
-          <p style={{ color: 'rgba(248,251,255,0.52)', fontSize: 17, maxWidth: 480, margin: '0 auto' }}>
-            Everything you need to turn a codebase into a compelling demo
-          </p>
-        </div>
+        </motion.div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, marginBottom: 48 }}>
-          <FeatureCard delay={0} icon={<IngestIcon />} title="Context Ingestion" body="Firecrawl reads the repository and Playwright captures product surfaces before the script is written." />
-          <FeatureCard delay={0.1} icon={<ScriptIcon />} title="AI Scripting" body="The script engine turns README context into scenes, voiceover, code moments, and precise timing." />
-          <FeatureCard delay={0.2} icon={<RenderIcon />} title="Cinematic Render" body="Remotion assembles the finished demo with motion, captions, screenshots, and an export-ready MP4." />
-        </div>
+        {/* ① Bento grid — asymmetric (2/3 + 1/3) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
 
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <motion.button
-            onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
-            className="glass-button glass-button-primary"
-            whileHover={{ scale: 1.04, transition: SNAP }}
-            whileTap={{ scale: 0.97, transition: SNAP }}
-            style={{ fontSize: 16, padding: '14px 32px', display: 'flex', alignItems: 'center', gap: 10, border: 'none', cursor: 'pointer' }}
+          {/* Large feature — Context Ingestion */}
+          <motion.div
+            initial={{ opacity: 0, y: 36, scale: 0.97 }}
+            animate={featuresIn ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ duration: 0.85, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              ...GLASS, borderRadius: 24, padding: 48,
+              position: 'relative', overflow: 'hidden', minHeight: 300,
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            }}
           >
-            Create Your First Video
-            <ArrowRight />
-          </motion.button>
+            <div aria-hidden style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'radial-gradient(ellipse 70% 90% at 10% 0%, rgba(53,214,255,0.13), transparent 60%), radial-gradient(ellipse 50% 60% at 90% 100%, rgba(47,123,255,0.1), transparent 60%)',
+              pointerEvents: 'none',
+            }} />
+            {/* Large icon watermark */}
+            <div aria-hidden style={{
+              position: 'absolute', top: 32, right: 40,
+              color: 'rgba(53,214,255,0.12)', transform: 'scale(3)', transformOrigin: 'top right',
+            }}>
+              <IngestIcon />
+            </div>
+            <div style={{ position: 'relative', zIndex: 2 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(53,214,255,0.2), rgba(47,123,255,0.14))',
+                border: '1px solid rgba(53,214,255,0.22)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--accent-glow)', marginBottom: 20,
+              }}>
+                <IngestIcon />
+              </div>
+              <h3 style={{ fontSize: 24, fontWeight: 700, color: '#f8fbff', margin: '0 0 10px' }}>
+                Context Ingestion
+              </h3>
+              <p style={{ color: 'rgba(248,251,255,0.58)', lineHeight: 1.7, margin: 0, fontSize: 16, maxWidth: 440 }}>
+                RepoStudio maps the full file tree, reads real source files, and screenshots the live app — so every claim in the video is backed by actual code.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Narrow feature — AI Scripting */}
+          <motion.div
+            initial={{ opacity: 0, y: 36, scale: 0.97 }}
+            animate={featuresIn ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              ...GLASS, borderRadius: 24, padding: 40,
+              position: 'relative', overflow: 'hidden', minHeight: 300,
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            }}
+          >
+            <div aria-hidden style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse 120% 70% at 100% 0%, rgba(157,124,255,0.15), transparent 60%)',
+              pointerEvents: 'none',
+            }} />
+            <div aria-hidden style={{
+              position: 'absolute', top: 24, right: 28,
+              color: 'rgba(157,124,255,0.13)', transform: 'scale(3)', transformOrigin: 'top right',
+            }}>
+              <ScriptIcon />
+            </div>
+            <div style={{ position: 'relative', zIndex: 2 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(157,124,255,0.2), rgba(47,123,255,0.14))',
+                border: '1px solid rgba(157,124,255,0.22)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#c084fc', marginBottom: 20,
+              }}>
+                <ScriptIcon />
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 700, color: '#f8fbff', margin: '0 0 10px' }}>
+                AI Scripting
+              </h3>
+              <p style={{ color: 'rgba(248,251,255,0.55)', lineHeight: 1.7, margin: 0, fontSize: 15 }}>
+                Maps imports to commercial claims. No fabrication — every badge is traceable to the code.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* ② Second row — render card (1/3) + stat strip (2/3) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
+
+          {/* Cinematic Render card */}
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            animate={featuresIn ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              ...GLASS, borderRadius: 24, padding: 40,
+              position: 'relative', overflow: 'hidden',
+            }}
+          >
+            <div aria-hidden style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse 100% 80% at 0% 100%, rgba(47,123,255,0.14), transparent 60%)',
+              pointerEvents: 'none',
+            }} />
+            <div aria-hidden style={{
+              position: 'absolute', top: 24, right: 28,
+              color: 'rgba(47,123,255,0.13)', transform: 'scale(3)', transformOrigin: 'top right',
+            }}>
+              <RenderIcon />
+            </div>
+            <div style={{ position: 'relative', zIndex: 2 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(47,123,255,0.2), rgba(53,214,255,0.1))',
+                border: '1px solid rgba(47,123,255,0.22)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--accent-glow)', marginBottom: 20,
+              }}>
+                <RenderIcon />
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 700, color: '#f8fbff', margin: '0 0 10px' }}>
+                Cinematic Render
+              </h3>
+              <p style={{ color: 'rgba(248,251,255,0.55)', lineHeight: 1.7, margin: 0, fontSize: 15 }}>
+                Remotion composes brand colors, panning screenshots, and captions into a 1080p MP4.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Stat strip — no card, just ruled numbers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0 }}>
+            {[
+              { value: '30s',   label: 'Polished video, zero editing' },
+              { value: '1080p', label: 'MP4, ready to post anywhere' },
+              { value: '5×',    label: 'Source files grounding every scene' },
+            ].map(({ value, label }, i) => (
+              <motion.div
+                key={value}
+                initial={{ opacity: 0, y: 24 }}
+                animate={featuresIn ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.75, delay: 0.35 + i * 0.11, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                  borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  padding: '36px 28px 12px',
+                }}
+              >
+                <div style={{
+                  fontSize: 56, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1,
+                  background: 'linear-gradient(145deg, #fff 10%, rgba(53,214,255,0.65) 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                  marginBottom: 10,
+                }}>
+                  {value}
+                </div>
+                <p style={{ color: 'rgba(248,251,255,0.45)', fontSize: 14, margin: 0, lineHeight: 1.55 }}>
+                  {label}
+                </p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── Final CTA ───────────────────────────────────────────────────── */}
+      {/* ══ CTA — horizontal split, not centered ════════════════════════════════ */}
       <motion.section
         ref={ctaRef}
-        initial={{ opacity: 0, y: 52, scale: 0.97 }}
-        animate={ctaVisible ? { opacity: 1, y: 0, scale: 1 } : {}}
-        transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, y: 52 }}
+        animate={ctaIn ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         style={{
           ...GLASS,
-          borderRadius: 32,
-          padding: '56px 64px',
-          textAlign: 'center',
+          borderRadius: 28,
+          padding: '52px 64px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 48,
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Shimmer sweep on scroll */}
         <Shimmer scrollProgress={scrollYProgress} />
         <div aria-hidden style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 160,
-          background: 'radial-gradient(ellipse 60% 100% at 50% 100%, rgba(47,123,255,0.14), transparent)',
+          position: 'absolute', top: 0, right: 0, width: '50%', height: '100%',
+          background: 'radial-gradient(ellipse 80% 100% at 100% 50%, rgba(47,123,255,0.13), transparent)',
           pointerEvents: 'none',
         }} />
-        <h2 style={{
-          fontSize: 40, fontWeight: 740, margin: '0 0 16px', letterSpacing: '-0.01em',
-          position: 'relative', zIndex: 2,
-          background: 'linear-gradient(160deg, #ffffff 20%, rgba(53,214,255,0.9) 60%, #ffffff 90%)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-        }}>
-          Start creating in seconds
-        </h2>
-        <p style={{ color: 'rgba(248,251,255,0.6)', fontSize: 17, lineHeight: 1.62, maxWidth: 500, margin: '0 auto 32px', position: 'relative', zIndex: 2 }}>
-          Sign in with GitHub, paste a repository URL, and RepoStudio generates your demo video end-to-end.
-        </p>
-        <motion.button
-          onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
-          className="glass-button glass-button-primary"
-          whileHover={{ scale: 1.05, transition: SNAP }}
-          whileTap={{ scale: 0.97, transition: SNAP }}
-          style={{ fontSize: 16, padding: '14px 34px', border: 'none', cursor: 'pointer', position: 'relative', zIndex: 2 }}
-        >
-          Open Studio
-        </motion.button>
+
+        <div style={{ position: 'relative', zIndex: 2, flex: 1 }}>
+          <h2 style={{
+            fontSize: 34, fontWeight: 740, margin: '0 0 12px', letterSpacing: '-0.012em',
+            background: 'linear-gradient(160deg, #ffffff 20%, rgba(53,214,255,0.9) 60%, #ffffff 90%)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+          }}>
+            Start creating in seconds
+          </h2>
+          <p style={{ color: 'rgba(248,251,255,0.58)', fontSize: 17, lineHeight: 1.64, maxWidth: 460, margin: 0 }}>
+            Sign in with GitHub, paste a repository URL, and RepoStudio generates your demo video end-to-end.
+          </p>
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 2, flexShrink: 0 }}>
+          <motion.button
+            onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
+            className="glass-button glass-button-primary"
+            whileHover={{ scale: 1.05, transition: SNAP }}
+            whileTap={{ scale: 0.97, transition: SNAP }}
+            style={{ fontSize: 16, padding: '16px 40px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            Open Studio
+          </motion.button>
+        </div>
       </motion.section>
 
     </div>
