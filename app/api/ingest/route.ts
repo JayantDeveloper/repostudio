@@ -212,23 +212,64 @@ export async function POST(req: NextRequest) {
   const screenshotLabel = demoUrl ? 'live demo' : 'GitHub repo page'
 
   try {
-    appendLog(job_id, 'Playwright', `Screenshotting ${screenshotLabel}: ${screenshotTarget}`)
+    appendLog(job_id, 'Playwright', `Capturing app journey: ${screenshotTarget}`)
     const { chromium } = await import('playwright')
     const browser = await chromium.launch()
     const page = await browser.newPage()
     await page.setViewportSize({ width: 1920, height: 1080 })
-    await page.goto(screenshotTarget, { waitUntil: 'networkidle', timeout: 20000 })
+    await page.goto(screenshotTarget, { waitUntil: 'networkidle', timeout: 25000 })
 
-    for (let i = 0; i < 3; i++) {
-      const buffer = await page.screenshot({ type: 'png' })
-      screenshotUrls.push(`data:image/png;base64,${buffer.toString('base64')}`)
-      if (i < 2) await page.evaluate(() => window.scrollBy(0, 400))
+    // Let JS animations and lazy images settle
+    await page.waitForTimeout(1200)
+
+    const capture = async () => {
+      const buf = await page.screenshot({ type: 'png' })
+      screenshotUrls.push(`data:image/png;base64,${buf.toString('base64')}`)
     }
+
+    // Frame 1 — landing: the first thing a visitor sees
+    await capture()
+    appendLog(job_id, 'Playwright', 'Frame 1: landing captured.')
+
+    // Frame 2 — hover the primary CTA to show UI interactivity
+    try {
+      const cta = page.locator(
+        [
+          'button[type="submit"]:visible',
+          'a[href*="start"]:visible',
+          'a[href*="demo"]:visible',
+          'a[href*="try"]:visible',
+          '[class*="cta"]:visible',
+          '[class*="hero"] button:visible',
+          '[class*="hero"] a:visible',
+          'nav a:nth-child(2):visible',
+        ].join(', ')
+      ).first()
+      if (await cta.isVisible({ timeout: 1500 })) {
+        await cta.hover({ timeout: 1500 })
+        await page.waitForTimeout(400)
+        appendLog(job_id, 'Playwright', 'Hovered primary CTA.')
+      }
+    } catch { /* no CTA found — capture as-is */ }
+    await capture()
+
+    // Frame 3 — scroll to first feature/content section
+    await page.evaluate(() => window.scrollTo({ top: 700 }))
+    await page.waitForTimeout(700)
+    await capture()
+    appendLog(job_id, 'Playwright', 'Frame 3: feature section captured.')
+
+    // Frame 4 — scroll deeper to show more product surface
+    await page.evaluate(() => window.scrollTo({ top: 1500 }))
+    await page.waitForTimeout(700)
+    await capture()
+    appendLog(job_id, 'Playwright', 'Frame 4: deep scroll captured.')
+
     await browser.close()
-    appendLog(job_id, 'Playwright', `Captured ${screenshotUrls.length} screenshots.`)
+    appendLog(job_id, 'Playwright', `Captured ${screenshotUrls.length} interaction frames.`)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    appendLog(job_id, 'Playwright', `Screenshot failed (${msg.slice(0, 80)}). Skipping.`)
+    appendLog(job_id, 'Playwright', `Capture failed (${msg.slice(0, 80)}). Skipping.`)
   }
 
   return NextResponse.json({

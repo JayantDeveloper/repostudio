@@ -21,73 +21,141 @@ export function CreateVideoModal({
         onClick={() => setOpen(true)}
         className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#2f7bff] to-[#35d6ff] px-4 text-sm font-semibold text-white shadow-lg shadow-[#2f7bff]/20 transition hover:from-[#1d4ed8] hover:to-[#2f7bff] ${fullWidth ? 'w-full' : ''}`}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 5v14" />
-          <path d="M5 12h14" />
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 5v14" /><path d="M5 12h14" />
         </svg>
         {label}
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617]/70 px-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-3xl border border-white/30 bg-white/90 p-6 text-[#07111f] shadow-2xl shadow-[#020617]/35 backdrop-blur-2xl">
+        /* Full-viewport overlay — z-[9999] beats the fixed sidebar */
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center px-4"
+          style={{ backdropFilter: 'blur(16px)', background: 'rgba(2,6,23,0.72)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
+        >
+          {/* Glass modal panel */}
+          <div
+            className="w-full max-w-md"
+            style={{
+              background: 'rgba(255,255,255,0.055)',
+              backdropFilter: 'blur(40px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.14)',
+              boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.2), 0 32px 80px rgba(0,0,0,0.6)',
+              borderRadius: 28,
+              padding: '36px 40px',
+              color: '#f8fbff',
+            }}
+          >
+            {/* Header */}
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#2f7bff]">New video</p>
-                <h2 className="mt-2 text-2xl font-bold text-[#07111f]">Create from a GitHub repo</h2>
-                <p className="mt-2 text-sm leading-6 text-[#07111f]/60">
-                  Paste a public repository URL. RepoStudio will open the editor with a default preview ready to generate.
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(53,214,255,0.75)', marginBottom: 10 }}>
+                  New video
+                </p>
+                <h2 style={{ fontSize: 22, fontWeight: 740, color: '#f8fbff', margin: 0, letterSpacing: '-0.02em' }}>
+                  Create from a GitHub repo
+                </h2>
+                <p style={{ fontSize: 14, color: 'rgba(248,251,255,0.52)', marginTop: 8, lineHeight: 1.6, marginBottom: 0 }}>
+                  Paste a public repository URL. RepoStudio will open the editor ready to generate.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="grid h-9 w-9 place-items-center rounded-full bg-[#edf7ff] text-[#1d4ed8] transition hover:bg-[#dbeafe]"
-                aria-label="Close create video window"
+                aria-label="Close"
+                style={{
+                  flexShrink: 0,
+                  width: 32, height: 32,
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(248,251,255,0.6)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
                 </svg>
               </button>
             </div>
 
+            {/* Form */}
             <form
               action={(formData) => {
-                startTransition(() => {
-                  void createAction(formData)
-                })
+                startTransition(() => { void createAction(formData) })
               }}
               className="space-y-4"
             >
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[#07111f]">Repository URL</span>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'rgba(248,251,255,0.75)', marginBottom: 8 }}>
+                  Repository URL
+                </span>
                 <input
                   name="repo_url"
                   autoFocus
-                  className="h-12 w-full rounded-xl border border-[#2f7bff]/20 bg-white px-4 text-sm text-[#07111f] outline-none transition focus:border-[#2f7bff] focus:ring-4 focus:ring-[#35d6ff]/20"
                   placeholder="https://github.com/owner/repo"
+                  style={{
+                    width: '100%',
+                    height: 48,
+                    padding: '0 16px',
+                    fontSize: 14,
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    borderRadius: 12,
+                    color: '#f8fbff',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    fontFamily: 'monospace',
+                    transition: 'border-color 0.15s, box-shadow 0.15s',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(53,214,255,0.55)'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(53,214,255,0.12)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 />
               </label>
 
-              <div className="rounded-2xl border border-[#35d6ff]/25 bg-[#edf7ff] p-4 text-sm text-[#07111f]/68">
-                Leave the field blank to start with the FastAPI demo repo.
-              </div>
+              <p style={{ fontSize: 13, color: 'rgba(248,251,255,0.38)', margin: 0, lineHeight: 1.5 }}>
+                Leave blank to start with the FastAPI demo repo.
+              </p>
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div style={{ display: 'flex', gap: 10, paddingTop: 4, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="h-10 rounded-lg border border-[#2f7bff]/20 bg-white px-4 text-sm font-semibold text-[#1d4ed8] transition hover:bg-[#edf7ff]"
+                  style={{
+                    height: 40, padding: '0 20px', fontSize: 14, fontWeight: 600,
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    borderRadius: 10, color: 'rgba(248,251,255,0.7)', cursor: 'pointer',
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="h-10 rounded-lg bg-gradient-to-r from-[#2f7bff] to-[#35d6ff] px-4 text-sm font-semibold text-white shadow-lg shadow-[#2f7bff]/20 disabled:opacity-60"
+                  style={{
+                    height: 40, padding: '0 24px', fontSize: 14, fontWeight: 600,
+                    background: isPending
+                      ? 'rgba(47,123,255,0.5)'
+                      : 'linear-gradient(135deg, #2f7bff, #35d6ff)',
+                    border: 'none', borderRadius: 10, color: '#fff', cursor: isPending ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 20px rgba(47,123,255,0.35)',
+                    opacity: isPending ? 0.7 : 1,
+                  }}
                 >
-                  {isPending ? 'Creating...' : 'Create Video'}
+                  {isPending ? 'Opening…' : 'Create Video'}
                 </button>
               </div>
             </form>

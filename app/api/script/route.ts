@@ -99,7 +99,7 @@ async function callGemini(
   const userMsg = buildUserMessage(readme, github_url, source_files)
   const prompt = `${SYSTEM_PROMPT}\n\n${userMsg}`
 
-  const models = ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro']
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']
   let lastError = ''
 
   for (const model of models) {
@@ -145,22 +145,25 @@ export async function POST(req: NextRequest) {
 
   let scenes: Scene[] | null = null
 
-  if (process.env.NVIDIA_NIM_API_KEY) {
+  // Lead with Gemini 2.5 Flash — deeper source-code comprehension, still fast
+  if (process.env.GEMINI_API_KEY) {
     try {
-      scenes = validateScenes(await callNemotron(readme, github_url, source_files))
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      appendLog(job_id, 'Nemotron-3', `Nemotron error: ${msg.slice(0, 80)}. Trying Gemini...`)
-    }
-  }
-
-  if (!scenes && process.env.GEMINI_API_KEY) {
-    try {
-      appendLog(job_id, 'Nemotron-3', 'Generating scenes with Gemini...')
+      appendLog(job_id, 'Gemini', 'Generating scenes with Gemini Flash...')
       scenes = validateScenes(await callGemini(readme, github_url, source_files))
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
-      appendLog(job_id, 'Nemotron-3', `Gemini error: ${msg.slice(0, 80)}. Using fallback scenes.`)
+      appendLog(job_id, 'Gemini', `Gemini error: ${msg.slice(0, 80)}. Trying Nemotron...`)
+    }
+  }
+
+  // Nemotron as fallback if Gemini key absent or failed
+  if (!scenes && process.env.NVIDIA_NIM_API_KEY) {
+    try {
+      appendLog(job_id, 'Nemotron-3', 'Generating scenes with Nemotron...')
+      scenes = validateScenes(await callNemotron(readme, github_url, source_files))
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      appendLog(job_id, 'Nemotron-3', `Nemotron error: ${msg.slice(0, 80)}. Using fallback scenes.`)
     }
   }
 

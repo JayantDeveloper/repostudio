@@ -22,7 +22,7 @@ export const MainComposition: React.FC<VideoProps> = (props) => {
   return (
     <AbsoluteFill style={{ background: brandColors?.background ?? '#0a0a0a' }}>
       {audioUrl && <Audio src={audioUrl} />}
-      {!isOutro && <BackgroundScene scene={scene} frame={sceneFrame} brandColors={brandColors} />}
+      {!isOutro && <BackgroundScene scene={scene} frame={sceneFrame} screenshotUrls={screenshotUrls} brandColors={brandColors} />}
       {!isOutro && (
         <UIShowroom scene={scene} frame={frame} screenshotUrls={screenshotUrls} brandColors={brandColors} />
       )}
