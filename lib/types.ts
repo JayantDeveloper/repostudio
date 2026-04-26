@@ -1,7 +1,7 @@
 export type Scene = {
   id: string
   text: string
-  code: string
+  code?: string   // repurposed as short feature-badge text; not shown as code
   duration: number
   start_time: number
 }
@@ -18,6 +18,12 @@ export type LogLine = {
   message: string
 }
 
+export type BrandColors = {
+  primary: string    // e.g. '#2f7bff'
+  accent: string     // e.g. '#35d6ff'
+  background: string // e.g. '#05070d'
+}
+
 export type VideoJob = {
   id: string
   status: 'ingesting' | 'scripting' | 'audio' | 'face' | 'ready' | 'rendering' | 'done' | 'error'
@@ -30,6 +36,19 @@ export type VideoJob = {
   logs: LogLine[]
 }
 
+export type VideoJobStatus = VideoJob['status']
+
+export type VideoJobRecord = {
+  id: string
+  user_id: string
+  repo_url: string
+  status: VideoJobStatus
+  scenes: Scene[]
+  video_url?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 export type VideoProps = {
   scenes: Scene[]
   audioUrl: string
@@ -38,5 +57,13 @@ export type VideoProps = {
   showFace: boolean
   debugMesh: boolean
   blendshapesUrl?: string
+  /** All Playwright screenshots for the UI showroom */
+  screenshotUrls?: string[]
+  /** Kept for backward compat — first screenshot */
+  screenshotUrl?: string
   github_url?: string
+  /** Live demo/product URL shown in the outro (falls back to github_url) */
+  liveUrl?: string
+  repoName?: string
+  brandColors?: BrandColors
 }

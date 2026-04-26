@@ -6,6 +6,7 @@ import path from 'path'
 import fs from 'fs'
 import os from 'os'
 import type { VideoProps } from '@/lib/types'
+import { supabaseAdmin } from '@/lib/supabase'
 
 // Cache the bundle location so we only build once per server lifecycle
 let cachedBundle: string | null = null
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const props: VideoProps = await req.json()
+  const { projectId, ...props }: VideoProps & { projectId?: string } = await req.json()
 
   const totalDuration = props.scenes.reduce(
     (acc, s) => Math.max(acc, s.start_time + s.duration),
@@ -28,17 +29,16 @@ export async function POST(req: NextRequest) {
   )
   const durationInFrames = Math.max(900, Math.ceil(totalDuration * 30))
 
-  const outPath = path.join(os.tmpdir(), `repoview-${Date.now()}.mp4`)
+  const filename = `repostudio-${Date.now()}.mp4`
+  const outPath = path.join(os.tmpdir(), filename)
 
   try {
     const { bundle } = await import('@remotion/bundler')
     const { renderMedia, selectComposition } = await import('@remotion/renderer')
 
-    // Bundle once and reuse
     if (!cachedBundle) {
       cachedBundle = await bundle({
         entryPoint: path.resolve('./remotion/index.ts'),
-        // Inline the webpackOverride to avoid needing a remotion.config.ts
         webpackOverride: (cfg) => cfg,
       })
     }
@@ -62,11 +62,34 @@ export async function POST(req: NextRequest) {
     const buffer = fs.readFileSync(outPath)
     fs.unlinkSync(outPath)
 
+    // Upload to Supabase Storage and persist the public URL on the job record
+    let videoUrl: string | null = null
+    if (supabaseAdmin && projectId) {
+      const storagePath = `${projectId}/${filename}`
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('video-exports')
+        .upload(storagePath, buffer, { contentType: 'video/mp4', upsert: true })
+
+      if (!uploadError) {
+        const { data: urlData } = supabaseAdmin.storage
+          .from('video-exports')
+          .getPublicUrl(storagePath)
+        videoUrl = urlData.publicUrl
+
+        // Best-effort update — don't fail the response if this errors
+        await supabaseAdmin
+          .from('video_jobs')
+          .update({ status: 'done', video_url: videoUrl, updated_at: new Date().toISOString() })
+          .eq('id', projectId)
+      }
+    }
+
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'video/mp4',
-        'Content-Disposition': `attachment; filename="repoview-${Date.now()}.mp4"`,
+        'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': String(buffer.byteLength),
+        ...(videoUrl ? { 'X-Video-URL': videoUrl } : {}),
       },
     })
   } catch (err) {

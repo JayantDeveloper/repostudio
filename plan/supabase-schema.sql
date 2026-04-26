@@ -19,3 +19,21 @@ create policy "service write" on public.logs for insert with check (true);
 
 -- Enable Realtime so the browser gets push updates
 alter publication supabase_realtime add table public.logs;
+
+-- Persistent projects (one row per saved video mission)
+create table if not exists public.video_jobs (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     text not null,
+  repo_url    text not null,
+  status      text not null default 'ready',
+  scenes      jsonb not null default '[]'::jsonb,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+  constraint video_jobs_status_check check (
+    status in ('ingesting', 'scripting', 'audio', 'face', 'ready', 'rendering', 'done', 'error')
+  )
+);
+
+create index if not exists video_jobs_user_updated on public.video_jobs (user_id, updated_at desc);
+
+alter table public.video_jobs enable row level security;

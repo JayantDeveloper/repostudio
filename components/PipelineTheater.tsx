@@ -20,14 +20,12 @@ export function PipelineTheater({ logs }: { logs: LogLine[] }) {
 
   return (
     <div
+      className="liquid-glass glass-surface"
       style={{
-        background: '#000',
-        fontFamily: '"JetBrains Mono", "Courier New", monospace',
+        fontFamily: 'var(--font-geist-mono), "SF Mono", monospace',
         fontSize: 13,
-        color: '#4ade80',
+        color: 'rgba(248,251,255,0.82)',
         padding: '16px 20px',
-        borderRadius: 8,
-        border: '1px solid rgba(255,255,255,0.08)',
         minHeight: 200,
         maxHeight: 280,
         overflowY: 'auto',
@@ -35,16 +33,16 @@ export function PipelineTheater({ logs }: { logs: LogLine[] }) {
       }}
     >
       {logs.length === 0 && (
-        <span style={{ color: 'rgba(74,222,128,0.4)' }}>Waiting for pipeline...</span>
+        <span style={{ color: 'rgba(248,251,255,0.45)' }}>Waiting for pipeline...</span>
       )}
       {logs.map((line, i) => {
-        const tagColor = TAG_COLORS[line.tag] ?? '#4ade80'
+        const tagColor = TAG_COLORS[line.tag] ?? 'rgba(248,251,255,0.82)'
         return (
           <div key={i}>
-            <span style={{ color: 'rgba(74,222,128,0.4)', marginRight: 8 }}>
+            <span style={{ color: 'rgba(248,251,255,0.42)', marginRight: 8 }}>
               {new Date(line.ts).toISOString().slice(11, 19)}
             </span>
-            <span style={{ color: tagColor, marginRight: 8 }}>[{line.tag}]</span>
+            <span style={{ color: tagColor, textShadow: `0 0 5px ${tagColor}`, marginRight: 8 }}>[{line.tag}]</span>
             <span>{line.message}</span>
           </div>
         )
@@ -55,7 +53,8 @@ export function PipelineTheater({ logs }: { logs: LogLine[] }) {
             display: 'inline-block',
             width: 8,
             height: 14,
-            background: '#4ade80',
+            background: 'var(--accent-glow)',
+            boxShadow: '0 0 16px rgba(53,214,255,0.72)',
             marginLeft: 2,
             animation: 'blink 1s step-end infinite',
           }}

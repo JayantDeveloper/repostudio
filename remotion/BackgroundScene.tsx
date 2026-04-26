@@ -1,11 +1,14 @@
 import { AbsoluteFill, interpolate, spring } from 'remotion'
-import type { Scene } from '@/lib/types'
+import type { BrandColors, Scene } from '@/lib/types'
+
+const DEFAULT_COLORS: BrandColors = { primary: '#2f7bff', accent: '#35d6ff', background: '#05070d' }
 
 export const BackgroundScene: React.FC<{
   scene: Scene
   frame: number
-  screenshotUrl?: string
-}> = ({ scene, frame, screenshotUrl }) => {
+  brandColors?: BrandColors
+}> = ({ scene, frame, brandColors }) => {
+  const colors = brandColors ?? DEFAULT_COLORS
   const progress = spring({ frame, fps: 30, config: { damping: 14, stiffness: 120 } })
 
   return (
@@ -14,7 +17,7 @@ export const BackgroundScene: React.FC<{
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(135deg, #0a0a0a 60%, #0f172a)',
+          background: `linear-gradient(135deg, ${colors.background} 60%, ${colors.primary}33)`,
         }}
       />
 
@@ -29,29 +32,12 @@ export const BackgroundScene: React.FC<{
           fontWeight: 700,
           color: '#f1f5f9',
           letterSpacing: -1,
-          maxWidth: screenshotUrl ? 900 : 1760,
+          maxWidth: 900,
+          lineHeight: 1.2,
         }}
       >
         {scene.text}
       </div>
-
-      {screenshotUrl && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 80,
-            top: '50%',
-            transform: `translateY(-50%) perspective(1000px) rotateX(10deg) rotateY(-15deg) scale(${progress})`,
-            boxShadow: '0 40px 80px rgba(0,0,0,0.6)',
-            borderRadius: 12,
-            overflow: 'hidden',
-            width: 640,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={screenshotUrl} style={{ width: '100%', display: 'block' }} alt="" />
-        </div>
-      )}
     </AbsoluteFill>
   )
 }

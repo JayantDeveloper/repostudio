@@ -5,6 +5,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [GitHub],
   callbacks: {
     session({ session, token }) {
+      if (token.sub) session.user.id = token.sub
       if (token.login) session.user.login = token.login as string
       return session
     },

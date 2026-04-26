@@ -21,6 +21,12 @@ export const Caption: React.FC<{ wordTimestamps: WordTimestamp[]; frame: number 
   })
   if (!activeLine) return null
 
+  // Static mode: all words share the same start/end (center-aligned fallback).
+  // Render as a plain subtitle block with no per-word highlight.
+  const isStatic =
+    activeLine.length > 1 &&
+    activeLine.every((w) => w.start === activeLine[0].start && w.end === activeLine[0].end)
+
   return (
     <div
       style={{
@@ -33,27 +39,53 @@ export const Caption: React.FC<{ wordTimestamps: WordTimestamp[]; frame: number 
         pointerEvents: 'none',
       }}
     >
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {activeLine.map((w) => {
-          const isActive = currentSec >= w.start && currentSec <= w.end
-          return (
-            <span
-              key={`${w.word}-${w.start}`}
-              style={{
-                fontFamily: 'sans-serif',
-                fontSize: 28,
-                fontWeight: isActive ? 700 : 400,
-                color: isActive ? '#f1f5f9' : 'rgba(241,245,249,0.45)',
-                background: isActive ? 'rgba(125,211,252,0.15)' : 'transparent',
-                borderRadius: 4,
-                padding: '2px 6px',
-              }}
-            >
-              {w.word}
-            </span>
-          )
-        })}
-      </div>
+      {isStatic ? (
+        // Static block — no word-level animation, just a clean subtitle line
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.55)',
+            borderRadius: 8,
+            padding: '10px 20px',
+            maxWidth: 960,
+            textAlign: 'center',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'sans-serif',
+              fontSize: 28,
+              fontWeight: 500,
+              color: 'rgba(241,245,249,0.9)',
+              lineHeight: 1.4,
+            }}
+          >
+            {activeLine.map((w) => w.word).join(' ')}
+          </span>
+        </div>
+      ) : (
+        // Real timestamps — highlight the currently-spoken word
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {activeLine.map((w) => {
+            const isActive = currentSec >= w.start && currentSec <= w.end
+            return (
+              <span
+                key={`${w.word}-${w.start}`}
+                style={{
+                  fontFamily: 'sans-serif',
+                  fontSize: 28,
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? '#f1f5f9' : 'rgba(241,245,249,0.45)',
+                  background: isActive ? 'rgba(125,211,252,0.15)' : 'transparent',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                }}
+              >
+                {w.word}
+              </span>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

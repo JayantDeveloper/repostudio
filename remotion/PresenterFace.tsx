@@ -1,6 +1,5 @@
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion'
 import { ThreeCanvas } from '@remotion/three'
-import { useRef } from 'react'
 import * as THREE from 'three'
 import type { WordTimestamp } from '@/lib/types'
 
