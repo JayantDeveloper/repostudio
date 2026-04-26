@@ -3,8 +3,22 @@ import type { BrandColors, Scene } from '@/lib/types'
 
 const DEFAULT_COLORS: BrandColors = { primary: '#2f7bff', accent: '#35d6ff', background: '#05070d' }
 
-// Map scene id to which screenshot in the journey to show
-const SCENE_INDEX: Record<string, number> = { hook: 0, feature_1: 2, feature_2: 3, outro: 3 }
+// Each scene gets a pair of consecutive screenshots.
+// With 6 frames: hook→[0,1], feature_1→[2,3], feature_2→[4,5]
+const SCENE_PAIR: Record<string, [number, number]> = {
+  hook:      [0, 1],
+  feature_1: [2, 3],
+  feature_2: [4, 5],
+  outro:     [5, 5],
+}
+
+// Each scene has its own Ken Burns direction for cinematic variety
+const KEN_BURNS: Record<string, { scaleFrom: number; scaleTo: number; origin: string }> = {
+  hook:      { scaleFrom: 1.0,  scaleTo: 1.07, origin: '55% 40%' },  // slow zoom in
+  feature_1: { scaleFrom: 1.06, scaleTo: 1.0,  origin: '45% 55%' },  // slow zoom out
+  feature_2: { scaleFrom: 1.0,  scaleTo: 1.08, origin: '60% 45%' },  // zoom in, shifted right
+  outro:     { scaleFrom: 1.03, scaleTo: 1.03, origin: '50% 50%' },  // no zoom for outro
+}
 
 export const BackgroundScene: React.FC<{
   scene: Scene
@@ -14,12 +28,13 @@ export const BackgroundScene: React.FC<{
 }> = ({ scene, frame, screenshotUrls, brandColors }) => {
   const colors = brandColors ?? DEFAULT_COLORS
 
-  // Per-scene entrance spring for text
+  // Text entrance spring
   const textProgress = spring({ frame, fps: 30, config: { damping: 14, stiffness: 110 } })
 
-  // Ken Burns: subtle zoom-in over the entire scene
+  // Ken Burns
+  const kb = KEN_BURNS[scene.id] ?? KEN_BURNS.hook
   const sceneDurationFrames = scene.duration * 30
-  const kenBurns = interpolate(frame, [0, sceneDurationFrames], [1.0, 1.07], {
+  const kenBurns = interpolate(frame, [0, sceneDurationFrames], [kb.scaleFrom, kb.scaleTo], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
@@ -27,48 +42,63 @@ export const BackgroundScene: React.FC<{
   const hasScreenshot = screenshotUrls && screenshotUrls.length > 0
 
   if (hasScreenshot) {
-    const sceneIndex = SCENE_INDEX[scene.id] ?? 0
-    const imgUrl = screenshotUrls[Math.min(sceneIndex, screenshotUrls.length - 1)]
+    const [idxA, idxB] = SCENE_PAIR[scene.id] ?? [0, 1]
+    const imgA = screenshotUrls[Math.min(idxA, screenshotUrls.length - 1)]
+    const imgB = screenshotUrls[Math.min(idxB, screenshotUrls.length - 1)]
+    const sameImg = imgA === imgB
+
+    // Crossfade from shot A → shot B halfway through the scene
+    const half = sceneDurationFrames / 2
+    const SHOT_FADE = 14
+    const shotCrossfade = sameImg ? 0 : interpolate(
+      frame,
+      [half - SHOT_FADE, half + SHOT_FADE],
+      [0, 1],
+      { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    )
+
+    const imgStyle: React.CSSProperties = {
+      position: 'absolute',
+      top: '-4%',
+      left: '-4%',
+      width: '108%',
+      height: '108%',
+      objectFit: 'cover',
+      objectPosition: 'top center',
+      transform: `scale(${kenBurns})`,
+      transformOrigin: kb.origin,
+    }
 
     return (
       <AbsoluteFill>
-        {/* ── Full-bleed screenshot with Ken Burns zoom ── */}
+        {/* ── Full-bleed screenshot pair with intra-scene crossfade ── */}
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          {/* Shot A */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imgUrl}
-            style={{
-              position: 'absolute',
-              top: '-4%',
-              left: '-4%',
-              width: '108%',
-              height: '108%',
-              objectFit: 'cover',
-              objectPosition: 'top center',
-              transform: `scale(${kenBurns})`,
-              transformOrigin: '55% 45%',
-            }}
-            alt=""
-          />
+          <img src={imgA} style={{ ...imgStyle, opacity: 1 - shotCrossfade }} alt="" />
+          {/* Shot B (fades in halfway) */}
+          {!sameImg && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imgB} style={{ ...imgStyle, opacity: shotCrossfade }} alt="" />
+          )}
         </div>
 
-        {/* ── Cinematic vignette overlay ── */}
-        {/* Heavier at top and bottom, lighter in the center-right where the UI lives */}
+        {/* ── Cinematic vignette — heavier at edges, lighter where UI lives ── */}
         <div style={{
           position: 'absolute', inset: 0,
           background: `
             linear-gradient(to top,
-              rgba(0,0,0,0.88) 0%,
-              rgba(0,0,0,0.50) 20%,
-              rgba(0,0,0,0.12) 50%,
-              rgba(0,0,0,0.35) 80%,
+              rgba(0,0,0,0.90) 0%,
+              rgba(0,0,0,0.55) 18%,
+              rgba(0,0,0,0.10) 48%,
+              rgba(0,0,0,0.30) 80%,
               rgba(0,0,0,0.65) 100%
             ),
             linear-gradient(to right,
-              rgba(0,0,0,0.50) 0%,
-              transparent 40%,
-              transparent 70%,
-              rgba(0,0,0,0.30) 100%
+              rgba(0,0,0,0.55) 0%,
+              transparent 35%,
+              transparent 65%,
+              rgba(0,0,0,0.35) 100%
             )
           `,
         }} />
@@ -76,21 +106,21 @@ export const BackgroundScene: React.FC<{
         {/* ── Lower-third narration text ── */}
         <div style={{
           position: 'absolute',
-          bottom: 180,
+          bottom: 190,
           left: 80,
           right: 160,
           opacity: textProgress,
-          transform: `translateY(${(1 - textProgress) * 22}px)`,
+          transform: `translateY(${(1 - textProgress) * 20}px)`,
         }}>
           <p style={{
-            fontSize: 54,
+            fontSize: 52,
             fontWeight: 740,
             color: '#ffffff',
-            lineHeight: 1.15,
+            lineHeight: 1.16,
             letterSpacing: -1.2,
             margin: 0,
-            maxWidth: 820,
-            textShadow: '0 2px 24px rgba(0,0,0,0.9)',
+            maxWidth: 840,
+            textShadow: '0 2px 28px rgba(0,0,0,0.95)',
           }}>
             {scene.text}
           </p>
@@ -99,36 +129,41 @@ export const BackgroundScene: React.FC<{
     )
   }
 
-  // ── No screenshot: branded gradient mesh ────────────────────────────────────
+  // ── No screenshot: animated brand mesh ─────────────────────────────────────
+  // Animate the radial origins slowly over time for a living background
+  const drift = interpolate(frame, [0, sceneDurationFrames], [0, 1], { extrapolateRight: 'clamp' })
+  const r1x = 22 + drift * 8
+  const r2x = 78 - drift * 6
+  const r3y = 78 + drift * 5
+
   return (
     <AbsoluteFill>
-      {/* Animated radial mesh using brand colors */}
       <div style={{
         position: 'absolute', inset: 0,
         background: `
-          radial-gradient(circle at 22% 38%, ${colors.primary}50, transparent 48%),
-          radial-gradient(circle at 78% 22%, ${colors.accent}38, transparent 44%),
-          radial-gradient(circle at 55% 78%, rgba(157,124,255,0.28), transparent 42%),
+          radial-gradient(circle at ${r1x}% 38%, ${colors.primary}55, transparent 48%),
+          radial-gradient(circle at ${r2x}% 22%, ${colors.accent}40, transparent 44%),
+          radial-gradient(circle at 55% ${r3y}%, rgba(157,124,255,0.30), transparent 42%),
           linear-gradient(135deg, ${colors.background} 0%, #0d1b3e 100%)
         `,
       }} />
 
-      {/* Subtle grid overlay for depth */}
+      {/* Subtle grid for depth */}
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
+          linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px)
         `,
         backgroundSize: '80px 80px',
         maskImage: 'radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent)',
         WebkitMaskImage: 'radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent)',
       }} />
 
-      {/* Lower-third narration text */}
+      {/* Lower-third narration */}
       <div style={{
         position: 'absolute',
-        bottom: 200,
+        bottom: 210,
         left: 80,
         right: 80,
         opacity: textProgress,
@@ -141,7 +176,7 @@ export const BackgroundScene: React.FC<{
           lineHeight: 1.12,
           letterSpacing: -1.5,
           margin: 0,
-          maxWidth: 860,
+          maxWidth: 900,
         }}>
           {scene.text}
         </p>

@@ -71,7 +71,7 @@ async function fetchRaw(owner: string, repo: string, branch: string, path: strin
   } catch { return null }
 }
 
-// ── Source files (top 5 largest real source files for the LLM) ───────────────
+// ── Source files (top 8 largest real source files for the LLM) ───────────────
 async function fetchSourceFiles(
   tree: TreeBlob[],
   owner: string,
@@ -81,12 +81,12 @@ async function fetchSourceFiles(
   const candidates = tree
     .filter((e) => e.type === 'blob' && isSourceFile(e.path))
     .sort((a, b) => (b.size ?? 0) - (a.size ?? 0))
-    .slice(0, 5)
+    .slice(0, 8)
 
   const results: { path: string; content: string }[] = []
   for (const file of candidates) {
     const text = await fetchRaw(owner, repo, branch, file.path)
-    if (text) results.push({ path: file.path, content: text.slice(0, 3000) })
+    if (text) results.push({ path: file.path, content: text.slice(0, 5000) })
   }
   return results
 }
@@ -219,51 +219,62 @@ export async function POST(req: NextRequest) {
     await page.setViewportSize({ width: 1920, height: 1080 })
     await page.goto(screenshotTarget, { waitUntil: 'networkidle', timeout: 25000 })
 
-    // Let JS animations and lazy images settle
-    await page.waitForTimeout(1200)
+    // Let JS animations, lazy images, and entrance animations settle
+    await page.waitForTimeout(1500)
 
     const capture = async () => {
       const buf = await page.screenshot({ type: 'png' })
       screenshotUrls.push(`data:image/png;base64,${buf.toString('base64')}`)
     }
 
-    // Frame 1 — landing: the first thing a visitor sees
+    // Frame 1 — hero at rest: first impression
     await capture()
-    appendLog(job_id, 'Playwright', 'Frame 1: landing captured.')
+    appendLog(job_id, 'Playwright', 'Frame 1: hero captured.')
 
-    // Frame 2 — hover the primary CTA to show UI interactivity
+    // Frame 2 — hover the primary CTA to reveal hover/focus state
     try {
-      const cta = page.locator(
-        [
-          'button[type="submit"]:visible',
-          'a[href*="start"]:visible',
-          'a[href*="demo"]:visible',
-          'a[href*="try"]:visible',
-          '[class*="cta"]:visible',
-          '[class*="hero"] button:visible',
-          '[class*="hero"] a:visible',
-          'nav a:nth-child(2):visible',
-        ].join(', ')
-      ).first()
-      if (await cta.isVisible({ timeout: 1500 })) {
-        await cta.hover({ timeout: 1500 })
-        await page.waitForTimeout(400)
+      const ctaSelector = [
+        '[class*="hero"] a:visible',
+        '[class*="hero"] button:visible',
+        '[class*="cta"]:visible',
+        'a[href*="start"]:visible',
+        'a[href*="demo"]:visible',
+        'a[href*="get-started"]:visible',
+        'button[type="submit"]:visible',
+        'nav a:nth-child(2):visible',
+      ].join(', ')
+      const cta = page.locator(ctaSelector).first()
+      if (await cta.isVisible({ timeout: 2000 })) {
+        await cta.hover({ timeout: 2000 })
+        await page.waitForTimeout(500)
         appendLog(job_id, 'Playwright', 'Hovered primary CTA.')
       }
-    } catch { /* no CTA found — capture as-is */ }
+    } catch { /* no CTA — proceed */ }
     await capture()
 
-    // Frame 3 — scroll to first feature/content section
-    await page.evaluate(() => window.scrollTo({ top: 700 }))
-    await page.waitForTimeout(700)
+    // Frame 3 — features section (first scroll)
+    await page.evaluate(() => window.scrollTo({ top: 650 }))
+    await page.waitForTimeout(800)
     await capture()
     appendLog(job_id, 'Playwright', 'Frame 3: feature section captured.')
 
-    // Frame 4 — scroll deeper to show more product surface
-    await page.evaluate(() => window.scrollTo({ top: 1500 }))
-    await page.waitForTimeout(700)
+    // Frame 4 — deeper feature surface
+    await page.evaluate(() => window.scrollTo({ top: 1400 }))
+    await page.waitForTimeout(800)
     await capture()
-    appendLog(job_id, 'Playwright', 'Frame 4: deep scroll captured.')
+    appendLog(job_id, 'Playwright', 'Frame 4: deeper surface captured.')
+
+    // Frame 5 — further into the page (pricing, testimonials, footer CTA)
+    await page.evaluate(() => window.scrollTo({ top: 2200 }))
+    await page.waitForTimeout(800)
+    await capture()
+    appendLog(job_id, 'Playwright', 'Frame 5: lower page captured.')
+
+    // Frame 6 — back to top: shows the brand hero fresh eyes
+    await page.evaluate(() => window.scrollTo({ top: 0 }))
+    await page.waitForTimeout(600)
+    await capture()
+    appendLog(job_id, 'Playwright', 'Frame 6: top revisit captured.')
 
     await browser.close()
     appendLog(job_id, 'Playwright', `Captured ${screenshotUrls.length} interaction frames.`)

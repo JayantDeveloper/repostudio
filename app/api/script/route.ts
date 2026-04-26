@@ -57,7 +57,7 @@ function buildUserMessage(
     }
   }
 
-  parts.push(`\nREADME (first 4000 chars):\n${readme.slice(0, 4000)}`)
+  parts.push(`\nREADME (first 8000 chars):\n${readme.slice(0, 8000)}`)
   return parts.join('\n')
 }
 
@@ -99,7 +99,8 @@ async function callGemini(
   const userMsg = buildUserMessage(readme, github_url, source_files)
   const prompt = `${SYSTEM_PROMPT}\n\n${userMsg}`
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']
+  // Power order: Pro has far superior long-context code comprehension for this task
+  const models = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']
   let lastError = ''
 
   for (const model of models) {
