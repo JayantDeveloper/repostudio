@@ -6,6 +6,8 @@ import { PipelineTheater } from '@/components/PipelineTheater'
 import { useVideoGenerator } from '@/hooks/useVideoGenerator'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import type { Scene, VideoJobRecord } from '@/lib/types'
+import { MUSIC_MOODS, DEFAULT_MOOD } from '@/lib/music'
+import type { MusicMood } from '@/lib/music'
 
 const Player = dynamic(() => import('@remotion/player').then((m) => m.Player), { ssr: false })
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
@@ -199,6 +201,54 @@ export function EditorWorkspace({
               active={inputProps.debugMesh}
               onClick={() => setInputProps((p) => ({ ...p, debugMesh: !p.debugMesh }))}
             />
+
+            {/* Music mood selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+              <span style={{ fontSize: 11, color: 'rgba(241,245,249,0.35)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>
+                Music
+              </span>
+              {(Object.entries(MUSIC_MOODS) as [MusicMood, typeof MUSIC_MOODS[MusicMood]][]).map(([mood, preset]) => {
+                const active = (inputProps.musicMood ?? DEFAULT_MOOD) === mood
+                return (
+                  <button
+                    key={mood}
+                    title={`${preset.label} — ${preset.description}`}
+                    onClick={() => setInputProps((p) => ({ ...p, musicMood: mood }))}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      border: active ? '1px solid rgba(125,211,252,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      background: active ? 'rgba(125,211,252,0.15)' : 'rgba(255,255,255,0.04)',
+                      color: active ? '#7dd3fc' : 'rgba(241,245,249,0.55)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {preset.emoji}
+                  </button>
+                )
+              })}
+              <button
+                title="No music"
+                onClick={() => setInputProps((p) => ({ ...p, musicMood: undefined, musicUrl: '' }))}
+                style={{
+                  padding: '5px 8px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  cursor: 'pointer',
+                  border: (!inputProps.musicMood && inputProps.musicUrl === '')
+                    ? '1px solid rgba(125,211,252,0.5)'
+                    : '1px solid rgba(255,255,255,0.08)',
+                  background: (!inputProps.musicMood && inputProps.musicUrl === '')
+                    ? 'rgba(125,211,252,0.15)'
+                    : 'rgba(255,255,255,0.04)',
+                  color: 'rgba(241,245,249,0.4)',
+                }}
+              >
+                ✕
+              </button>
+            </div>
 
             <button
               className="glass-button"

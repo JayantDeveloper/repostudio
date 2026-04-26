@@ -32,8 +32,8 @@ export function validateScenes(raw: unknown): Scene[] {
   })
 
   const totalDuration = scenes.reduce((sum, s) => sum + s.duration, 0)
-  if (totalDuration > 35)
-    throw new Error(`Total duration ${totalDuration}s exceeds 35s limit`)
+  if (totalDuration > 60)
+    throw new Error(`Total duration ${totalDuration}s exceeds 60s limit`)
 
   return scenes
 }

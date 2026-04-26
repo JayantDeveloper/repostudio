@@ -8,7 +8,7 @@ import { supabase, hasSupabase } from '@/lib/supabase'
 import type { LogLine, VideoJob, VideoJobRecord, VideoJobStatus, VideoProps } from '@/lib/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
-const TOTAL_FRAMES = 30 * 30
+const MIN_FRAMES = 30 * 30  // 30s minimum player size
 
 function propsFromProject(project?: VideoJobRecord | null): VideoProps {
   return {
@@ -300,7 +300,7 @@ export function useVideoGenerator({
   }, [])
 
   const totalDuration = inputProps.scenes.reduce((acc, s) => Math.max(acc, s.start_time + s.duration), 0)
-  const durationInFrames = Math.max(TOTAL_FRAMES, Math.ceil(totalDuration * 30))
+  const durationInFrames = Math.max(MIN_FRAMES, Math.ceil(totalDuration * 30))
 
   return {
     url, setUrl,

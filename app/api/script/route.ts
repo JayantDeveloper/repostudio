@@ -6,18 +6,19 @@ import type { Scene } from '@/lib/types'
 // ── System prompt ─────────────────────────────────────────────────────────────
 // The source_files section is injected into the user message, not here,
 // so the model sees both layers clearly.
-const SYSTEM_PROMPT = `You are a world-class Product Marketer creating a 30-second commercial trailer for a GitHub project. Showcase USER EXPERIENCE and VALUE — not implementation details.
+const SYSTEM_PROMPT = `You are a world-class Product Marketer creating a polished commercial trailer for a GitHub project. Showcase USER EXPERIENCE and VALUE — not implementation details.
 
 Output ONLY valid JSON — no markdown fences, no explanation:
 {"scenes":[{"id":"string","text":"one punchy narration sentence max 18 words","code":"2-4 word feature badge with emoji","duration":number,"start_time":number}]}
 
 HARD RULES:
-1. Sum of all durations MUST be <= 35.
+1. Sum of all durations MUST be between 25 and 55 seconds. Pick the duration that feels natural — not too rushed, not padded. A simple CLI tool: ~28s. A full SaaS with many features: ~45s.
 2. start_time of scene N = sum of durations of scenes 0 through N-1.
-3. The "code" field is a SHORT FEATURE BADGE (2-4 words + emoji, e.g. "⚡ Zero Config", "🚀 Instant Deploy", "🔒 Built-in Auth"). NEVER write actual code syntax, imports, or function calls.
-4. Focus on USER VALUE: what problem it solves, speed improvement, why developers love it.
-5. Narration should sound like an Apple commercial — confident, punchy, benefit-focused.
-6. id values must be: "hook", "feature_1", "feature_2", "outro".
+3. Scene durations guide: hook 6–10s (first impression, bold claim), feature_1 8–14s (hero feature with breathing room), feature_2 8–14s (second feature, same pacing), outro 5–8s (CTA).
+4. The "code" field is a SHORT FEATURE BADGE (2-4 words + emoji, e.g. "⚡ Zero Config", "🚀 Instant Deploy", "🔒 Built-in Auth"). NEVER write actual code syntax, imports, or function calls.
+5. Focus on USER VALUE: what problem it solves, speed improvement, why developers love it.
+6. Narration should sound like an Apple commercial — confident, punchy, benefit-focused.
+7. id values must be: "hook", "feature_1", "feature_2", "outro".
 
 PATTERN MAPPING — scan the provided source files for these imports/patterns and translate them into the corresponding commercial claim. Every claim in the narration must be traceable to something real in the code:
 - 'supabase' → "Real-time Database" / "Instant Sync" / "Database Persistence"

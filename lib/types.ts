@@ -66,4 +66,8 @@ export type VideoProps = {
   liveUrl?: string
   repoName?: string
   brandColors?: BrandColors
+  /** Background music mood preset — ducks under narrator */
+  musicMood?: import('@/lib/music').MusicMood
+  /** Custom music URL override (skips mood preset lookup) */
+  musicUrl?: string
 }
