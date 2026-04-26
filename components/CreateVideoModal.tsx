@@ -142,9 +142,40 @@ export function CreateVideoModal({
                   />
                 </label>
 
-                <p style={{ fontSize: 13, color: 'rgba(248,251,255,0.35)', margin: '0 0 20px', lineHeight: 1.5 }}>
-                  Leave blank to start with the FastAPI demo repo.
-                </p>
+                <label style={{ display: 'block', marginBottom: 20 }}>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'rgba(248,251,255,0.75)', marginBottom: 4 }}>
+                    Live demo URL <span style={{ fontWeight: 400, color: 'rgba(248,251,255,0.35)' }}>(optional)</span>
+                  </span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'rgba(248,251,255,0.35)', marginBottom: 8 }}>
+                    Playwright will scroll through this URL for the video background
+                  </span>
+                  <input
+                    name="demo_url"
+                    placeholder="https://your-live-app.com"
+                    style={{
+                      width: '100%',
+                      height: 48,
+                      padding: '0 16px',
+                      fontSize: 14,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.14)',
+                      borderRadius: 12,
+                      color: '#f8fbff',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      fontFamily: 'monospace',
+                      transition: 'border-color 0.15s, box-shadow 0.15s',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(53,214,255,0.55)'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(53,214,255,0.12)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  />
+                </label>
 
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                   <button

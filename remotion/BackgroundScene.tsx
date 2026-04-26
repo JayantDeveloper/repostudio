@@ -1,4 +1,4 @@
-import { AbsoluteFill, interpolate, spring } from 'remotion'
+import { AbsoluteFill, interpolate, spring, OffthreadVideo } from 'remotion'
 import type { BrandColors, Scene } from '@/lib/types'
 
 const DEFAULT_COLORS: BrandColors = { primary: '#2f7bff', accent: '#35d6ff', background: '#05070d' }
@@ -24,8 +24,9 @@ export const BackgroundScene: React.FC<{
   scene: Scene
   frame: number
   screenshotUrls?: string[]
+  demoVideoUrl?: string
   brandColors?: BrandColors
-}> = ({ scene, frame, screenshotUrls, brandColors }) => {
+}> = ({ scene, frame, screenshotUrls, demoVideoUrl, brandColors }) => {
   const colors = brandColors ?? DEFAULT_COLORS
 
   // Text entrance spring
@@ -40,6 +41,63 @@ export const BackgroundScene: React.FC<{
   })
 
   const hasScreenshot = screenshotUrls && screenshotUrls.length > 0
+
+  // ── Live demo video (Playwright webm) ─────────────────────────────────────
+  if (demoVideoUrl) {
+    return (
+      <AbsoluteFill>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          <OffthreadVideo
+            src={demoVideoUrl}
+            style={{
+              position: 'absolute',
+              top: '-4%', left: '-4%',
+              width: '108%', height: '108%',
+              objectFit: 'cover',
+              objectPosition: 'top center',
+              transform: `scale(${kenBurns})`,
+              transformOrigin: kb.origin,
+            }}
+          />
+        </div>
+
+        {/* Cinematic vignette */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: `
+            linear-gradient(to top,
+              rgba(0,0,0,0.90) 0%,
+              rgba(0,0,0,0.55) 18%,
+              rgba(0,0,0,0.10) 48%,
+              rgba(0,0,0,0.30) 80%,
+              rgba(0,0,0,0.65) 100%
+            ),
+            linear-gradient(to right,
+              rgba(0,0,0,0.55) 0%,
+              transparent 35%,
+              transparent 65%,
+              rgba(0,0,0,0.35) 100%
+            )
+          `,
+        }} />
+
+        {/* Lower-third narration */}
+        <div style={{
+          position: 'absolute', bottom: 190, left: 80, right: 160,
+          opacity: textProgress,
+          transform: `translateY(${(1 - textProgress) * 20}px)`,
+        }}>
+          <p style={{
+            fontSize: 52, fontWeight: 740, color: '#ffffff',
+            lineHeight: 1.16, letterSpacing: -1.2, margin: 0, maxWidth: 840,
+            textShadow: '0 2px 28px rgba(0,0,0,0.95)',
+          }}>
+            {scene.text}
+          </p>
+        </div>
+      </AbsoluteFill>
+    )
+  }
 
   if (hasScreenshot) {
     const [idxA, idxB] = SCENE_PAIR[scene.id] ?? [0, 1]

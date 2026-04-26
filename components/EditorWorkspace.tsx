@@ -20,9 +20,11 @@ const MainComposition = dynamic(
 export function EditorWorkspace({
   projectId,
   initialProject,
+  initialDemoUrl,
 }: {
   projectId?: string
   initialProject?: VideoJobRecord | null
+  initialDemoUrl?: string
 }) {
   const { data: session } = useSession()
   const [mode, setMode] = useState<'generate' | 'studio'>('generate')
@@ -41,7 +43,7 @@ export function EditorWorkspace({
     renderMp4,
     onJsonChange,
     durationInFrames,
-  } = useVideoGenerator({ projectId, initialProject })
+  } = useVideoGenerator({ projectId, initialProject, initialDemoUrl })
 
   const isReady = job && !running
 

@@ -27,6 +27,7 @@ create table if not exists public.video_jobs (
   repo_url    text not null,
   status      text not null default 'ready',
   scenes      jsonb not null default '[]'::jsonb,
+  video_url   text,
   created_at  timestamptz default now(),
   updated_at  timestamptz default now(),
   constraint video_jobs_status_check check (

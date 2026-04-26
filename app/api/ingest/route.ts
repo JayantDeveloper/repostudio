@@ -1,5 +1,10 @@
+export const maxDuration = 300
+
 import { NextRequest, NextResponse } from 'next/server'
+import os from 'os'
+import fs from 'fs'
 import { appendLog } from '@/lib/logs'
+import { supabaseAdmin } from '@/lib/supabase'
 import type { BrandColors } from '@/lib/types'
 
 // Patterns we never want to treat as "source": configs, declarations, tests, generated files
@@ -136,7 +141,7 @@ function detectBrandColors(files: { path: string; content: string }[]): BrandCol
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const { github_url, job_id } = await req.json() as { github_url: string; job_id: string }
+  const { github_url, job_id, demo_url_override } = await req.json() as { github_url: string; job_id: string; demo_url_override?: string }
   const [owner, repo] = parseOwnerRepo(github_url)
   const repoName = repo || github_url.split('/').pop() || 'project'
 
@@ -206,87 +211,96 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 3. Screenshots (demo link → GitHub repo page fallback) ────────────────
-  const demoUrl = extractDemoUrl(readme)
+  // ── 3. Record live scrolling demo video ───────────────────────────────────
+  const demoUrl = demo_url_override || extractDemoUrl(readme)
   const screenshotTarget = demoUrl ?? `https://github.com/${owner}/${repo}`
-  const screenshotLabel = demoUrl ? 'live demo' : 'GitHub repo page'
+
+  let demoVideoUrl: string | null = null
 
   try {
-    appendLog(job_id, 'Playwright', `Capturing app journey: ${screenshotTarget}`)
-    const { chromium } = await import('playwright')
-    const browser = await chromium.launch()
-    const page = await browser.newPage()
-    await page.setViewportSize({ width: 1920, height: 1080 })
-    await page.goto(screenshotTarget, { waitUntil: 'networkidle', timeout: 25000 })
+    appendLog(job_id, 'Playwright', `Recording scroll demo: ${screenshotTarget}`)
+    const chromiumMod = await import('@sparticuz/chromium-min')
+    const { chromium } = await import('playwright-core')
+    const tmpDir = os.tmpdir()
+    const executablePath = await chromiumMod.default.executablePath(
+      'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
+    )
+    const browser = await chromium.launch({
+      args: chromiumMod.default.args,
+      executablePath,
+      headless: true,
+    })
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      recordVideo: { dir: tmpDir, size: { width: 1280, height: 720 } },
+    })
+    const page = await context.newPage()
 
-    // Let JS animations, lazy images, and entrance animations settle
-    await page.waitForTimeout(1500)
+    await page.goto(screenshotTarget, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.waitForTimeout(2500) // hero settle + entrance animations
 
-    const capture = async () => {
-      const buf = await page.screenshot({ type: 'png' })
-      screenshotUrls.push(`data:image/png;base64,${buf.toString('base64')}`)
+    // Center mouse so wheel events hit the main scroll container
+    await page.mouse.move(640, 360)
+
+    // Phase 1: slow scroll down ~4000px over ~20s
+    appendLog(job_id, 'Playwright', 'Scrolling through page...')
+    for (let i = 0; i < 100; i++) {
+      await page.mouse.wheel(0, 40)
+      await page.waitForTimeout(200)
     }
 
-    // Frame 1 — hero at rest: first impression
-    await capture()
-    appendLog(job_id, 'Playwright', 'Frame 1: hero captured.')
+    // Phase 2: pause on deeper content
+    await page.waitForTimeout(4000)
 
-    // Frame 2 — hover the primary CTA to reveal hover/focus state
-    try {
-      const ctaSelector = [
-        '[class*="hero"] a:visible',
-        '[class*="hero"] button:visible',
-        '[class*="cta"]:visible',
-        'a[href*="start"]:visible',
-        'a[href*="demo"]:visible',
-        'a[href*="get-started"]:visible',
-        'button[type="submit"]:visible',
-        'nav a:nth-child(2):visible',
-      ].join(', ')
-      const cta = page.locator(ctaSelector).first()
-      if (await cta.isVisible({ timeout: 2000 })) {
-        await cta.hover({ timeout: 2000 })
-        await page.waitForTimeout(500)
-        appendLog(job_id, 'Playwright', 'Hovered primary CTA.')
-      }
-    } catch { /* no CTA — proceed */ }
-    await capture()
+    // Phase 3: another ~1600px deeper
+    for (let i = 0; i < 40; i++) {
+      await page.mouse.wheel(0, 40)
+      await page.waitForTimeout(200)
+    }
 
-    // Frame 3 — features section (first scroll)
-    await page.evaluate(() => window.scrollTo({ top: 650 }))
-    await page.waitForTimeout(800)
-    await capture()
-    appendLog(job_id, 'Playwright', 'Frame 3: feature section captured.')
+    // Phase 4: pause then drift back to top
+    await page.waitForTimeout(3000)
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
+    await page.waitForTimeout(4500)
 
-    // Frame 4 — deeper feature surface
-    await page.evaluate(() => window.scrollTo({ top: 1400 }))
-    await page.waitForTimeout(800)
-    await capture()
-    appendLog(job_id, 'Playwright', 'Frame 4: deeper surface captured.')
-
-    // Frame 5 — further into the page (pricing, testimonials, footer CTA)
-    await page.evaluate(() => window.scrollTo({ top: 2200 }))
-    await page.waitForTimeout(800)
-    await capture()
-    appendLog(job_id, 'Playwright', 'Frame 5: lower page captured.')
-
-    // Frame 6 — back to top: shows the brand hero fresh eyes
-    await page.evaluate(() => window.scrollTo({ top: 0 }))
-    await page.waitForTimeout(600)
-    await capture()
-    appendLog(job_id, 'Playwright', 'Frame 6: top revisit captured.')
-
+    const video = page.video()
+    await context.close()
     await browser.close()
-    appendLog(job_id, 'Playwright', `Captured ${screenshotUrls.length} interaction frames.`)
+
+    const videoPath = await video!.path()
+    appendLog(job_id, 'Playwright', `Recorded ${Math.round(fs.statSync(videoPath).size / 1024)}KB webm.`)
+
+    const videoBuffer = fs.readFileSync(videoPath)
+    fs.unlinkSync(videoPath)
+
+    // Upload to Supabase storage if service role key is configured
+    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const storagePath = `${job_id}/demo-scroll.webm`
+      const { error } = await supabaseAdmin.storage
+        .from('video-exports')
+        .upload(storagePath, videoBuffer, { contentType: 'video/webm', upsert: true })
+      if (!error) {
+        const { data } = supabaseAdmin.storage.from('video-exports').getPublicUrl(storagePath)
+        demoVideoUrl = data.publicUrl
+        appendLog(job_id, 'Playwright', 'Demo video uploaded to storage.')
+      }
+    }
+
+    // Fallback: base64 data URL (works without Supabase storage)
+    if (!demoVideoUrl) {
+      demoVideoUrl = `data:video/webm;base64,${videoBuffer.toString('base64')}`
+      appendLog(job_id, 'Playwright', 'Demo video encoded as base64.')
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    appendLog(job_id, 'Playwright', `Capture failed (${msg.slice(0, 80)}). Skipping.`)
+    appendLog(job_id, 'Playwright', `Recording failed (${msg.slice(0, 80)}). Skipping.`)
   }
 
   return NextResponse.json({
     readme,
     source_files,
     screenshot_urls: screenshotUrls,
+    demo_video_url: demoVideoUrl,
     brand_colors,
     repo_name: repoName,
     demo_url: demoUrl,

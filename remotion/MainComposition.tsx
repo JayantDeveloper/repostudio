@@ -65,7 +65,7 @@ export const MainComposition: React.FC<VideoProps> = (props) => {
   const {
     scenes, wordTimestamps, showCaptions, showFace, debugMesh,
     github_url, liveUrl, audioUrl, screenshotUrls, repoName, brandColors,
-    musicMood, musicUrl,
+    musicMood, musicUrl, demoVideoUrl,
   } = props
   const frame = useCurrentFrame()
 
@@ -102,6 +102,7 @@ export const MainComposition: React.FC<VideoProps> = (props) => {
                 scene={s}
                 frame={sFrame}
                 screenshotUrls={screenshotUrls}
+                demoVideoUrl={demoVideoUrl}
                 brandColors={brandColors}
               />
             ) : (

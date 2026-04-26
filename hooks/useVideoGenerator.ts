@@ -47,9 +47,11 @@ function jobFromProject(project: VideoJobRecord): VideoJob {
 export function useVideoGenerator({
   projectId,
   initialProject,
+  initialDemoUrl,
 }: {
   projectId?: string
   initialProject?: VideoJobRecord | null
+  initialDemoUrl?: string
 } = {}) {
   const router = useRouter()
   const [url, setUrl] = useState(initialProject?.repo_url ?? '')
@@ -171,9 +173,9 @@ export function useVideoGenerator({
       const ingestRes = await fetch('/api/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ github_url: targetUrl, job_id: jobId }),
+        body: JSON.stringify({ github_url: targetUrl, job_id: jobId, demo_url_override: initialDemoUrl }),
       })
-      const { readme, source_files, screenshot_urls, brand_colors, repo_name, demo_url } = await ingestRes.json()
+      const { readme, source_files, screenshot_urls, demo_video_url, brand_colors, repo_name, demo_url } = await ingestRes.json()
 
       setStatus('scripting')
       if (projectId) await pushStatus(projectId, 'scripting')
@@ -214,6 +216,7 @@ export function useVideoGenerator({
         ...(brand_colors ? { brandColors: brand_colors } : {}),
         ...(repo_name ? { repoName: repo_name } : {}),
         ...(demo_url ? { liveUrl: demo_url } : {}),
+        ...(demo_video_url ? { demoVideoUrl: demo_video_url } : {}),
       }))
     } catch (err) {
       console.error('Generation failed:', err)

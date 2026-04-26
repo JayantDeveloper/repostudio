@@ -2,38 +2,42 @@
 
 import { useState } from 'react'
 
-const SETUP_SQL = `-- Run in Supabase Dashboard → SQL Editor
-create extension if not exists pgcrypto;
+const SETUP_SQL = `-- Paste in Supabase Dashboard → SQL Editor → New query
+create table if not exists public.logs (
+  id         bigserial primary key,
+  job_id     text    not null,
+  ts         bigint  not null,
+  tag        text    not null,
+  message    text    not null,
+  created_at timestamptz default now()
+);
+create index if not exists logs_job_id_ts on public.logs (job_id, ts);
+alter table public.logs enable row level security;
+create policy "anon read"     on public.logs for select using (true);
+create policy "service write" on public.logs for insert with check (true);
+alter publication supabase_realtime add table public.logs;
 
 create table if not exists public.video_jobs (
-  id uuid primary key default gen_random_uuid(),
-  user_id text not null,
-  repo_url text not null,
-  status text not null default 'ready',
-  scenes jsonb not null default '[]'::jsonb,
-  video_url text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
+  id         uuid primary key default gen_random_uuid(),
+  user_id    text not null,
+  repo_url   text not null,
+  status     text not null default 'ready',
+  scenes     jsonb not null default '[]'::jsonb,
+  video_url  text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
   constraint video_jobs_status_check check (
     status in ('ingesting','scripting','audio','face','ready','rendering','done','error')
   )
 );
-
-alter table public.video_jobs add column if not exists video_url text;
-
 create index if not exists video_jobs_user_updated
   on public.video_jobs (user_id, updated_at desc);
+alter table public.video_jobs enable row level security;`.trim()
 
-alter table public.video_jobs enable row level security;
-
-create policy if not exists "users manage own jobs"
-  on public.video_jobs
-  using (auth.uid()::text = user_id)
-  with check (auth.uid()::text = user_id);
-
-insert into storage.buckets (id, name, public)
-values ('video-exports', 'video-exports', true)
-on conflict (id) do nothing;`.trim()
+function extractRef(supabaseUrl?: string): string | null {
+  const m = supabaseUrl?.match(/https?:\/\/([^.]+)\.supabase\.co/)
+  return m?.[1] ?? null
+}
 
 export function DbSetupBanner({ projectUrl }: { projectUrl?: string }) {
   const [copied, setCopied] = useState(false)
@@ -41,8 +45,9 @@ export function DbSetupBanner({ projectUrl }: { projectUrl?: string }) {
 
   if (dismissed) return null
 
-  const sqlEditorUrl = projectUrl
-    ? `${projectUrl.replace('.supabase.co', '.supabase.co')}/sql/new`
+  const ref = extractRef(projectUrl)
+  const sqlEditorUrl = ref
+    ? `https://supabase.com/dashboard/project/${ref}/sql/new`
     : 'https://supabase.com/dashboard'
 
   function copy() {
@@ -67,11 +72,27 @@ export function DbSetupBanner({ projectUrl }: { projectUrl?: string }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18 }}>⚙️</span>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24', marginBottom: 2 }}>
-              One-time database setup required
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>
+              Database tables not found — one-time setup needed
             </div>
-            <div style={{ fontSize: 13, color: 'rgba(248,251,255,0.55)', lineHeight: 1.5 }}>
-              Apply this SQL in the{' '}
+            <div style={{ fontSize: 13, color: 'rgba(248,251,255,0.7)', lineHeight: 1.6 }}>
+              <strong style={{ color: '#86efac' }}>Auto-fix:</strong> Add{' '}
+              <code style={{ background: 'rgba(255,255,255,0.1)', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
+                SUPABASE_MANAGEMENT_TOKEN
+              </code>{' '}
+              to your environment — get one from{' '}
+              <a
+                href="https://supabase.com/dashboard/account/tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#7dd3fc', textDecoration: 'underline' }}
+              >
+                supabase.com/dashboard/account/tokens
+              </a>
+              {' '}and the app will create the tables automatically on next load.
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(248,251,255,0.45)', marginTop: 6, lineHeight: 1.5 }}>
+              Or run the SQL below manually in the{' '}
               <a
                 href={sqlEditorUrl}
                 target="_blank"
@@ -80,7 +101,7 @@ export function DbSetupBanner({ projectUrl }: { projectUrl?: string }) {
               >
                 Supabase SQL Editor
               </a>
-              {' '}to enable persistent video storage.
+              .
             </div>
           </div>
         </div>
@@ -110,7 +131,7 @@ export function DbSetupBanner({ projectUrl }: { projectUrl?: string }) {
             overflowX: 'auto',
             margin: 0,
             lineHeight: 1.6,
-            maxHeight: 160,
+            maxHeight: 180,
             overflowY: 'auto',
           }}
         >

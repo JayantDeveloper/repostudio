@@ -70,4 +70,6 @@ export type VideoProps = {
   musicMood?: import('@/lib/music').MusicMood
   /** Custom music URL override (skips mood preset lookup) */
   musicUrl?: string
+  /** Playwright-recorded webm of the live demo scrolling — used as video background */
+  demoVideoUrl?: string
 }

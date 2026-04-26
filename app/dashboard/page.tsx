@@ -14,6 +14,7 @@ async function createMission(formData: FormData) {
   if (!session?.user?.id) redirect('/api/auth/signin?callbackUrl=/dashboard')
 
   const repoUrl = String(formData.get('repo_url') ?? '').trim()
+  const demoUrl = String(formData.get('demo_url') ?? '').trim() || undefined
   const targetUrl = repoUrl || 'https://github.com/fastapi/fastapi'
   const job = await createVideoJob({
     userId: session.user.id,
@@ -22,7 +23,10 @@ async function createMission(formData: FormData) {
     scenes: buildFallbackScenes(targetUrl),
   })
 
-  redirect(`/editor/${job.id}`)
+  const editorUrl = demoUrl
+    ? `/editor/${job.id}?demo_url=${encodeURIComponent(demoUrl)}`
+    : `/editor/${job.id}`
+  redirect(editorUrl)
 }
 
 function VideoIcon({ className = '' }: { className?: string }) {

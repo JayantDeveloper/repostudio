@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { supabaseAdmin } from './supabase'
+import { autoMigrate } from './migrate'
 import type { Scene, VideoJobRecord, VideoJobStatus } from './types'
 
 const fallbackJobs = new Map<string, VideoJobRecord>()
@@ -31,17 +32,29 @@ export async function listVideoJobs(userId: string): Promise<{
     }
   }
 
-  const { data, error } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from('video_jobs')
     .select(SELECT_COLS)
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
 
   if (isMissingVideoJobsTable(error)) {
-    return {
-      jobs: sortJobs([...fallbackJobs.values()].filter((job) => job.user_id === userId)),
-      usingFallback: true,
-      errorMessage: 'Supabase video_jobs table is not applied yet. Using temporary local storage.',
+    const migration = await autoMigrate()
+    if (migration.ok) {
+      // Retry after successful migration
+      const retry = await supabaseAdmin
+        .from('video_jobs')
+        .select(SELECT_COLS)
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+      data = retry.data
+      error = retry.error
+    } else {
+      return {
+        jobs: sortJobs([...fallbackJobs.values()].filter((job) => job.user_id === userId)),
+        usingFallback: true,
+        errorMessage: migration.error ?? 'Supabase video_jobs table is missing. Set SUPABASE_MANAGEMENT_TOKEN to auto-migrate.',
+      }
     }
   }
 
@@ -58,7 +71,7 @@ export async function createVideoJob(input: {
   const now = new Date().toISOString()
 
   if (supabaseAdmin) {
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('video_jobs')
       .insert({
         user_id: input.userId,
@@ -69,9 +82,27 @@ export async function createVideoJob(input: {
       .select(SELECT_COLS)
       .single()
 
+    if (isMissingVideoJobsTable(error)) {
+      const migration = await autoMigrate()
+      if (migration.ok) {
+        const retry = await supabaseAdmin
+          .from('video_jobs')
+          .insert({
+            user_id: input.userId,
+            repo_url: input.repoUrl,
+            status: input.status,
+            scenes: input.scenes,
+          })
+          .select(SELECT_COLS)
+          .single()
+        data = retry.data
+        error = retry.error
+      }
+    }
+
     if (!isMissingVideoJobsTable(error)) {
-      if (error) throw new Error(error.message)
-      return data as VideoJobRecord
+      if (error) console.error('createVideoJob:', error.message)
+      else if (data) return data as VideoJobRecord
     }
   }
 
@@ -90,17 +121,19 @@ export async function createVideoJob(input: {
 
 export async function getVideoJob(id: string, userId: string): Promise<VideoJobRecord | null> {
   if (supabaseAdmin) {
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('video_jobs')
       .select(SELECT_COLS)
       .eq('id', id)
       .eq('user_id', userId)
       .single()
 
-    if (!isMissingVideoJobsTable(error)) {
-      if (error) return null
-      return data as VideoJobRecord
+    if (isMissingVideoJobsTable(error)) {
+      await autoMigrate()
+      return null
     }
+
+    if (!error) return data as VideoJobRecord
   }
 
   const job = fallbackJobs.get(id)
@@ -115,7 +148,7 @@ export async function updateVideoJob(
   const updated_at = new Date().toISOString()
 
   if (supabaseAdmin) {
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('video_jobs')
       .update({ ...updates, updated_at })
       .eq('id', id)
@@ -123,9 +156,24 @@ export async function updateVideoJob(
       .select(SELECT_COLS)
       .single()
 
+    if (isMissingVideoJobsTable(error)) {
+      const migration = await autoMigrate()
+      if (migration.ok) {
+        const retry = await supabaseAdmin
+          .from('video_jobs')
+          .update({ ...updates, updated_at })
+          .eq('id', id)
+          .eq('user_id', userId)
+          .select(SELECT_COLS)
+          .single()
+        data = retry.data
+        error = retry.error
+      }
+    }
+
     if (!isMissingVideoJobsTable(error)) {
       if (error) throw new Error(error.message)
-      return data as VideoJobRecord
+      if (data) return data as VideoJobRecord
     }
   }
 
