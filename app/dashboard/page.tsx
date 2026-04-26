@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { CreateVideoModal } from '@/components/CreateVideoModal'
+import { ProfileMenu } from '@/components/ProfileMenu'
+import { DbSetupBanner } from '@/components/DbSetupBanner'
 import { buildFallbackScenes } from '@/lib/scenes'
 import { createVideoJob, listVideoJobs } from '@/lib/videoJobs'
 
@@ -22,14 +23,6 @@ async function createMission(formData: FormData) {
   })
 
   redirect(`/editor/${job.id}`)
-}
-
-function initials(name?: string | null, email?: string | null) {
-  if (name?.trim()) {
-    const parts = name.trim().split(' ')
-    return `${parts[0]?.[0] ?? ''}${parts[parts.length - 1]?.[0] ?? ''}`.toUpperCase()
-  }
-  return (email?.[0] ?? 'U').toUpperCase()
 }
 
 function VideoIcon({ className = '' }: { className?: string }) {
@@ -103,22 +96,12 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-4">
             <CreateVideoModal createAction={createMission} />
 
-            <div
-              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#1d4ed8] text-sm font-bold text-white ring-2 ring-[#35d6ff]/40"
-              title={session.user.login ? `GitHub: ${session.user.login}` : 'GitHub account'}
-            >
-              {session.user.image ? (
-                <Image
-                  src={session.user.image}
-                  alt={session.user.login ?? session.user.name ?? 'GitHub profile'}
-                  width={36}
-                  height={36}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                initials(session.user.name, session.user.email)
-              )}
-            </div>
+            <ProfileMenu
+              name={session.user.name}
+              login={session.user.login}
+              email={session.user.email}
+              image={session.user.image}
+            />
           </div>
         </header>
 
@@ -138,10 +121,8 @@ export default async function DashboardPage() {
             </div>
           </section>
 
-          {(errorMessage || usingFallback) && (
-            <section className="mb-6 rounded-xl border-2 border-[#35d6ff]/30 bg-[#edf7ff] p-4 text-sm font-medium text-[#1d4ed8]">
-              {errorMessage}
-            </section>
+          {usingFallback && (
+            <DbSetupBanner projectUrl={process.env.NEXT_PUBLIC_SUPABASE_URL} />
           )}
 
           <div id="videos" className="mb-6 flex items-center justify-between">
