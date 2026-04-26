@@ -21,7 +21,22 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { projectId, ...props }: VideoProps & { projectId?: string } = await req.json()
+  const { projectId, ...rawProps }: VideoProps & { projectId?: string } = await req.json()
+
+  // Resolve music URL server-side — NEXT_PUBLIC_ vars aren't inlined inside the Remotion webpack bundle
+  const MOOD_URLS: Record<string, string> = {
+    cinematic: process.env.NEXT_PUBLIC_MUSIC_CINEMATIC_URL ?? '',
+    upbeat:    process.env.NEXT_PUBLIC_MUSIC_UPBEAT_URL    ?? '',
+    minimal:   process.env.NEXT_PUBLIC_MUSIC_MINIMAL_URL   ?? '',
+    hype:      process.env.NEXT_PUBLIC_MUSIC_HYPE_URL      ?? '',
+  }
+  const resolvedMusicUrl =
+    rawProps.musicUrl != null
+      ? rawProps.musicUrl
+      : rawProps.musicMood
+        ? (MOOD_URLS[rawProps.musicMood] || undefined)
+        : undefined
+  const props: VideoProps = { ...rawProps, musicUrl: resolvedMusicUrl }
 
   const totalDuration = props.scenes.reduce(
     (acc, s) => Math.max(acc, s.start_time + s.duration),
