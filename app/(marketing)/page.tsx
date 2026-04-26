@@ -358,13 +358,12 @@ export default function MarketingPage() {
                 }}
               />
 
-              {/* Ghost step number — outline only */}
+              {/* Step number */}
               <div style={{
                 fontSize: 88,
                 fontWeight: 800,
                 lineHeight: 0.88,
-                color: 'transparent',
-                WebkitTextStroke: '1px rgba(255,255,255,0.09)',
+                color: '#ffffff',
                 letterSpacing: '-0.05em',
                 userSelect: 'none',
                 paddingTop: 2,
