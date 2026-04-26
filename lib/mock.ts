@@ -69,5 +69,5 @@ export const MOCK_LOGS = [
   { tag: 'Firecrawl', message: 'Ingesting github.com/fastapi/fastapi...' },
   { tag: 'Playwright', message: 'Navigating headless chromium... capturing 3 viewport nodes.' },
   { tag: 'Nemotron-3', message: 'Analyzing DOM topology... mapping 4 scene structures.' },
-  { tag: 'Riva', message: 'Injecting SSML pauses... synthesizing word-level timestamps.' },
+  { tag: 'ElevenLabs', message: 'Injecting SSML pauses... synthesizing word-level timestamps.' },
 ]

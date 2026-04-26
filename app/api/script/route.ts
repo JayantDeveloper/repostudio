@@ -174,6 +174,6 @@ export async function POST(req: NextRequest) {
     scenes = buildFallbackScenes(github_url)
   }
 
-  appendLog(job_id, 'Riva', 'Scenes ready. Starting audio synthesis...')
+  appendLog(job_id, 'ElevenLabs', 'Scenes ready. Starting audio synthesis...')
   return NextResponse.json({ scenes })
 }

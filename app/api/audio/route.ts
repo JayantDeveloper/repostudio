@@ -41,7 +41,7 @@ async function callElevenLabs(
   job_id: string
 ): Promise<{ audioUrl: string; wordTimestamps: WordTimestamp[] }> {
   const narration = scenes.map((s) => s.text).join(' ')
-  appendLog(job_id, 'Riva', 'Synthesizing audio via ElevenLabs (with-timestamps)...')
+  appendLog(job_id, 'ElevenLabs', 'Synthesizing audio via ElevenLabs (with-timestamps)...')
 
   const voiceId = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL' // Sarah — || handles empty string
 
@@ -78,7 +78,7 @@ async function callElevenLabs(
     data.alignment.character_end_times_seconds
   )
 
-  appendLog(job_id, 'Riva', `Got ${wordTimestamps.length} real word timestamps from ElevenLabs.`)
+  appendLog(job_id, 'ElevenLabs', `Got ${wordTimestamps.length} real word timestamps from ElevenLabs.`)
 
   return {
     audioUrl: `data:audio/mpeg;base64,${data.audio_base64}`,
@@ -86,13 +86,13 @@ async function callElevenLabs(
   }
 }
 
-// ── NVIDIA Riva TTS ───────────────────────────────────────────────────────────
-async function callRiva(
+// ── NVIDIA NIM TTS (fallback) ─────────────────────────────────────────────────
+async function callNimTts(
   scenes: Scene[],
   job_id: string
 ): Promise<{ audioUrl: string; wordTimestamps: WordTimestamp[] }> {
   const narration = scenes.map((s) => s.text).join(' ')
-  appendLog(job_id, 'Riva', 'Synthesizing audio via NVIDIA Riva NIM...')
+  appendLog(job_id, 'ElevenLabs', 'Synthesizing audio via NVIDIA NIM TTS...')
   const baseUrl = process.env.NVIDIA_NIM_BASE_URL ?? 'https://integrate.api.nvidia.com/v1'
 
   const res = await fetch(`${baseUrl}/audio/text-to-speech`, {
@@ -129,22 +129,22 @@ export async function POST(req: NextRequest) {
   try {
     if (process.env.ELEVENLABS_API_KEY) {
       const result = await callElevenLabs(scenes, job_id)
-      appendLog(job_id, 'Riva', 'Audio synthesis complete.')
+      appendLog(job_id, 'ElevenLabs', 'Audio synthesis complete.')
       return NextResponse.json(result)
     }
 
     if (process.env.NVIDIA_NIM_API_KEY) {
-      const result = await callRiva(scenes, job_id)
-      appendLog(job_id, 'Riva', 'Audio synthesis complete.')
+      const result = await callNimTts(scenes, job_id)
+      appendLog(job_id, 'ElevenLabs', 'Audio synthesis complete.')
       return NextResponse.json(result)
     }
 
     // No TTS key — use center-aligned fake timestamps so captions don't drift
-    appendLog(job_id, 'Riva', 'No TTS key — using center-aligned captions.')
+    appendLog(job_id, 'ElevenLabs', 'No TTS key — using center-aligned captions.')
     return NextResponse.json({ audioUrl: '', wordTimestamps: generateFakeTimestamps(scenes) })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    appendLog(job_id, 'Riva', `TTS error: ${msg}. Falling back to center-aligned captions.`)
+    appendLog(job_id, 'ElevenLabs', `TTS error: ${msg}. Falling back to center-aligned captions.`)
     return NextResponse.json({ audioUrl: '', wordTimestamps: generateFakeTimestamps(scenes) })
   }
 }
