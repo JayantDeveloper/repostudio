@@ -16,7 +16,7 @@
     "@remotion/player": "^4.0.451",
     "@remotion/renderer": "^4.0.451",
     "@remotion/three": "^4.0.451",
-    "@sparticuz/chromium-min": "^147.0.2",
+    "@sparticuz/chromium-min": "^131.0.0",
     "@supabase/supabase-js": "^2.104.1",
     "@types/three": "^0.184.0",
     "framer-motion": "^12.38.0",

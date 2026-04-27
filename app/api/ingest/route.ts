@@ -219,7 +219,7 @@ export async function POST(req: NextRequest) {
     const puppeteerMod = await import('puppeteer-core')
 
     const executablePath = await chromiumMod.default.executablePath(
-      'https://github.com/Sparticuz/chromium/releases/download/v147.0.0/chromium-v147.0.0-pack.tar'
+      'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
     )
 
     const browser = await puppeteerMod.default.launch({
