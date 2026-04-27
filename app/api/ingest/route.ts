@@ -209,62 +209,40 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 3. Capture live screenshots via puppeteer ────────────────────────────
+  // ── 3. Gather preview images (no browser needed) ─────────────────────────
   const demoUrl = demo_url_override || extractDemoUrl(readme)
   const screenshotTarget = demoUrl ?? `https://github.com/${owner}/${repo}`
 
   try {
-    appendLog(job_id, 'Playwright', `Capturing screenshots: ${screenshotTarget}`)
-    const chromiumMod = await import('@sparticuz/chromium-min')
-    const puppeteerMod = await import('puppeteer-core')
+    appendLog(job_id, 'Playwright', `Fetching preview images for ${screenshotTarget}`)
 
-    const executablePath = await chromiumMod.default.executablePath(
-      'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
-    )
+    // GitHub social preview card — always available, no auth needed
+    const githubPreview = `https://opengraph.githubassets.com/1/${owner}/${repo}`
 
-    const browser = await puppeteerMod.default.launch({
-      args: chromiumMod.default.args,
-      executablePath,
-      headless: true,
-    })
-
-    const page = await browser.newPage()
-    await page.setViewport({ width: 1280, height: 720 })
-    await page.goto(screenshotTarget, { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await new Promise((r) => setTimeout(r, 2500))
-
-    const scrollPositions = [0, 800, 1600, 2400, 3200, 4000]
-    const buffers: Buffer[] = []
-
-    for (const pos of scrollPositions) {
-      await page.evaluate((y: number) => window.scrollTo({ top: y }), pos)
-      await new Promise((r) => setTimeout(r, 600))
-      const buf = await page.screenshot({ type: 'jpeg', quality: 85 }) as Buffer
-      buffers.push(buf)
-    }
-
-    await browser.close()
-    appendLog(job_id, 'Playwright', `Captured ${buffers.length} screenshots.`)
-
-    for (let i = 0; i < buffers.length; i++) {
-      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        const storagePath = `${job_id}/screenshot-${i}.jpg`
-        const { error } = await supabaseAdmin.storage
-          .from('video-exports')
-          .upload(storagePath, buffers[i], { contentType: 'image/jpeg', upsert: true })
-        if (!error) {
-          const { data } = supabaseAdmin.storage.from('video-exports').getPublicUrl(storagePath)
-          screenshotUrls.push(data.publicUrl)
-        }
-      } else {
-        screenshotUrls.push(`data:image/jpeg;base64,${buffers[i].toString('base64')}`)
+    // OG image from the demo site
+    let ogImageUrl: string | null = null
+    try {
+      const htmlRes = await fetch(screenshotTarget, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RepoStudio/1.0)' },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (htmlRes.ok) {
+        const html = await htmlRes.text()
+        const m =
+          html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+        if (m) ogImageUrl = m[1]
       }
-    }
+    } catch { /* skip */ }
 
-    appendLog(job_id, 'Playwright', `${screenshotUrls.length} screenshots ready.`)
+    // 6 slots: alternate product OG and GitHub preview for Ken Burns crossfades
+    const product = ogImageUrl ?? githubPreview
+    screenshotUrls.push(product, githubPreview, product, githubPreview, product, githubPreview)
+
+    appendLog(job_id, 'Playwright', `Preview images ready${ogImageUrl ? ' (OG + GitHub)' : ' (GitHub preview)' }.`)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    appendLog(job_id, 'Playwright', `Screenshot capture failed (${msg.slice(0, 80)}). Skipping.`)
+    appendLog(job_id, 'Playwright', `Preview fetch failed (${msg.slice(0, 80)}). Skipping.`)
   }
 
   return NextResponse.json({
