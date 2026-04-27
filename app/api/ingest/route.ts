@@ -1,8 +1,6 @@
 export const maxDuration = 300
 
 import { NextRequest, NextResponse } from 'next/server'
-import os from 'os'
-import fs from 'fs'
 import { appendLog } from '@/lib/logs'
 import { supabaseAdmin } from '@/lib/supabase'
 import type { BrandColors } from '@/lib/types'
@@ -211,96 +209,69 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 3. Record live scrolling demo video ───────────────────────────────────
+  // ── 3. Capture live screenshots via puppeteer ────────────────────────────
   const demoUrl = demo_url_override || extractDemoUrl(readme)
   const screenshotTarget = demoUrl ?? `https://github.com/${owner}/${repo}`
 
-  let demoVideoUrl: string | null = null
-
   try {
-    appendLog(job_id, 'Playwright', `Recording scroll demo: ${screenshotTarget}`)
+    appendLog(job_id, 'Playwright', `Capturing screenshots: ${screenshotTarget}`)
     const chromiumMod = await import('@sparticuz/chromium-min')
-    const { chromium } = await import('playwright-core')
-    const tmpDir = os.tmpdir()
+    const puppeteerMod = await import('puppeteer-core')
+
     const executablePath = await chromiumMod.default.executablePath(
-      'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
+      'https://github.com/Sparticuz/chromium/releases/download/v147.0.0/chromium-v147.0.0-pack.tar'
     )
-    const browser = await chromium.launch({
+
+    const browser = await puppeteerMod.default.launch({
       args: chromiumMod.default.args,
       executablePath,
       headless: true,
     })
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 720 },
-      recordVideo: { dir: tmpDir, size: { width: 1280, height: 720 } },
-    })
-    const page = await context.newPage()
 
+    const page = await browser.newPage()
+    await page.setViewport({ width: 1280, height: 720 })
     await page.goto(screenshotTarget, { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.waitForTimeout(2500) // hero settle + entrance animations
+    await new Promise((r) => setTimeout(r, 2500))
 
-    // Center mouse so wheel events hit the main scroll container
-    await page.mouse.move(640, 360)
+    const scrollPositions = [0, 800, 1600, 2400, 3200, 4000]
+    const buffers: Buffer[] = []
 
-    // Phase 1: slow scroll down ~4000px over ~20s
-    appendLog(job_id, 'Playwright', 'Scrolling through page...')
-    for (let i = 0; i < 100; i++) {
-      await page.mouse.wheel(0, 40)
-      await page.waitForTimeout(200)
+    for (const pos of scrollPositions) {
+      await page.evaluate((y: number) => window.scrollTo({ top: y }), pos)
+      await new Promise((r) => setTimeout(r, 600))
+      const buf = await page.screenshot({ type: 'jpeg', quality: 85 }) as Buffer
+      buffers.push(buf)
     }
 
-    // Phase 2: pause on deeper content
-    await page.waitForTimeout(4000)
-
-    // Phase 3: another ~1600px deeper
-    for (let i = 0; i < 40; i++) {
-      await page.mouse.wheel(0, 40)
-      await page.waitForTimeout(200)
-    }
-
-    // Phase 4: pause then drift back to top
-    await page.waitForTimeout(3000)
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
-    await page.waitForTimeout(4500)
-
-    const video = page.video()
-    await context.close()
     await browser.close()
+    appendLog(job_id, 'Playwright', `Captured ${buffers.length} screenshots.`)
 
-    const videoPath = await video!.path()
-    appendLog(job_id, 'Playwright', `Recorded ${Math.round(fs.statSync(videoPath).size / 1024)}KB webm.`)
-
-    const videoBuffer = fs.readFileSync(videoPath)
-    fs.unlinkSync(videoPath)
-
-    // Upload to Supabase storage if service role key is configured
-    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const storagePath = `${job_id}/demo-scroll.webm`
-      const { error } = await supabaseAdmin.storage
-        .from('video-exports')
-        .upload(storagePath, videoBuffer, { contentType: 'video/webm', upsert: true })
-      if (!error) {
-        const { data } = supabaseAdmin.storage.from('video-exports').getPublicUrl(storagePath)
-        demoVideoUrl = data.publicUrl
-        appendLog(job_id, 'Playwright', 'Demo video uploaded to storage.')
+    for (let i = 0; i < buffers.length; i++) {
+      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const storagePath = `${job_id}/screenshot-${i}.jpg`
+        const { error } = await supabaseAdmin.storage
+          .from('video-exports')
+          .upload(storagePath, buffers[i], { contentType: 'image/jpeg', upsert: true })
+        if (!error) {
+          const { data } = supabaseAdmin.storage.from('video-exports').getPublicUrl(storagePath)
+          screenshotUrls.push(data.publicUrl)
+        }
+      } else {
+        screenshotUrls.push(`data:image/jpeg;base64,${buffers[i].toString('base64')}`)
       }
     }
 
-    // Fallback: base64 data URL (works without Supabase storage)
-    if (!demoVideoUrl) {
-      demoVideoUrl = `data:video/webm;base64,${videoBuffer.toString('base64')}`
-      appendLog(job_id, 'Playwright', 'Demo video encoded as base64.')
-    }
+    appendLog(job_id, 'Playwright', `${screenshotUrls.length} screenshots ready.`)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    appendLog(job_id, 'Playwright', `Recording failed (${msg.slice(0, 80)}). Skipping.`)
+    appendLog(job_id, 'Playwright', `Screenshot capture failed (${msg.slice(0, 80)}). Skipping.`)
   }
 
   return NextResponse.json({
     readme,
     source_files,
     screenshot_urls: screenshotUrls,
-    demo_video_url: demoVideoUrl,
+    demo_video_url: null,
     brand_colors,
     repo_name: repoName,
     demo_url: demoUrl,

@@ -1,11 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { signIn } from 'next-auth/react'
 
 const SNAP = { stiffness: 280, damping: 32, mass: 0.6 }
-const HEAVY = { stiffness: 80, damping: 22, mass: 1.6 }
 
 function GitHubIcon() {
   return (
@@ -18,9 +16,9 @@ function GitHubIcon() {
 function Word({ children, delay, accent = false }: { children: string; delay: number; accent?: boolean }) {
   return (
     <motion.span
-      initial={{ opacity: 0, y: 48, filter: 'blur(12px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      transition={{ duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] }}
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
       style={{
         display: 'inline-block',
         marginRight: '0.22em',
@@ -38,11 +36,6 @@ function Word({ children, delay, accent = false }: { children: string; delay: nu
 }
 
 export function HeroSection() {
-  const { scrollY } = useScroll()
-  const heroY = useTransform(scrollY, [0, 380], [0, -48])
-  const heroYSpring = useSpring(heroY, HEAVY)
-  const heroOpacity = useTransform(scrollY, [0, 380], [1, 0])
-
   return (
     <section style={{
       position: 'relative',
@@ -54,18 +47,17 @@ export function HeroSection() {
       textAlign: 'center',
       paddingTop: 80,
     }}>
-      {/* Chromatic orbs — static, no scroll tracking */}
+      {/* Chromatic orbs — no blur filter, lower opacity instead */}
       <div aria-hidden style={{
         position: 'absolute', inset: '-40%', zIndex: 0, pointerEvents: 'none',
         background: `
-          radial-gradient(circle at 16% 28%, rgba(53,214,255,0.22), transparent 42%),
-          radial-gradient(circle at 80% 18%, rgba(47,123,255,0.22), transparent 38%),
-          radial-gradient(circle at 50% 85%, rgba(157,124,255,0.16), transparent 40%)
+          radial-gradient(circle at 16% 28%, rgba(53,214,255,0.15), transparent 42%),
+          radial-gradient(circle at 80% 18%, rgba(47,123,255,0.15), transparent 38%),
+          radial-gradient(circle at 50% 85%, rgba(157,124,255,0.10), transparent 40%)
         `,
-        filter: 'blur(24px)',
       }} />
 
-      <motion.div style={{ y: heroYSpring, opacity: heroOpacity, position: 'relative', zIndex: 1 }}>
+      <div style={{ position: 'relative', zIndex: 1 }}>
         <h1 style={{
           fontSize: 'clamp(52px, 8.5vw, 100px)',
           lineHeight: 1.01,
@@ -86,9 +78,9 @@ export function HeroSection() {
         </h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.9, delay: 0.74, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
           style={{ fontSize: 20, lineHeight: 1.64, color: 'rgba(248,251,255,0.58)', maxWidth: 540, margin: '0 auto 44px' }}
         >
           Paste a GitHub URL. RepoStudio ingests the repo, writes the script,
@@ -96,9 +88,9 @@ export function HeroSection() {
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.94, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.6, delay: 0.88, ease: [0.16, 1, 0.3, 1] }}
           style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}
         >
           <motion.button
@@ -127,7 +119,7 @@ export function HeroSection() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 1.16 }}
+          transition={{ duration: 0.5, delay: 1.1 }}
           style={{ marginTop: 22, fontSize: 14, color: 'rgba(248,251,255,0.38)' }}
         >
           Already have an account?{' '}
@@ -138,13 +130,13 @@ export function HeroSection() {
             Sign in here
           </button>
         </motion.p>
-      </motion.div>
+      </div>
 
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, delay: 1.3 }}
-        style={{ position: 'absolute', bottom: 44, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+        style={{ position: 'absolute', bottom: 44, left: '50%', transform: 'translateX(-50%)' }}
       >
         <motion.div
           animate={{ y: [0, 10, 0] }}
