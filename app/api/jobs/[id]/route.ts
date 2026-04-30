@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { getVideoJob, updateVideoJob } from '@/lib/videoJobs'
+import { getVideoJob, updateVideoJob, deleteVideoJob } from '@/lib/videoJobs'
 import type { Scene, VideoJobRecord, VideoJobStatus } from '@/lib/types'
 
 const STATUSES = new Set<VideoJobStatus>([
@@ -67,4 +67,14 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: message }, { status: 400 })
   }
+}
+
+export async function DELETE(_req: NextRequest, context: { params: Promise<{ id: string }> | { id: string } }) {
+  const userId = await getUserId()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await getParams(context)
+  const deleted = await deleteVideoJob(id, userId)
+  if (!deleted) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  return NextResponse.json({ deleted: true })
 }

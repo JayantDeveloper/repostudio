@@ -318,34 +318,37 @@ export function EditorWorkspace({
           <ToggleChip label="Captions" active={inputProps.showCaptions} onClick={() => setInputProps((p) => ({ ...p, showCaptions: !p.showCaptions }))} />
           <ToggleChip label="Face" active={inputProps.showFace} onClick={() => setInputProps((p) => ({ ...p, showFace: !p.showFace }))} />
 
-          {/* Music mood */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 4 }}>
-            <span style={{ fontSize: 10, color: 'rgba(241,245,249,0.3)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Music</span>
-            {(Object.entries(MUSIC_MOODS) as [MusicMood, typeof MUSIC_MOODS[MusicMood]][]).map(([mood, preset]) => {
-              const active = (inputProps.musicMood ?? DEFAULT_MOOD) === mood
-              return (
-                <button key={mood} title={`${preset.label} — ${preset.description}`}
-                  onClick={() => setInputProps((p) => ({ ...p, musicMood: mood }))}
-                  style={{
-                    padding: '5px 9px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
-                    border: active ? '1px solid rgba(125,211,252,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                    background: active ? 'rgba(125,211,252,0.15)' : 'rgba(255,255,255,0.04)',
-                    color: active ? '#7dd3fc' : 'rgba(241,245,249,0.55)',
-                    transition: 'all 0.15s',
-                  }}>
-                  {preset.emoji}
-                </button>
-              )
-            })}
-            <button title="No music"
-              onClick={() => setInputProps((p) => ({ ...p, musicMood: undefined, musicUrl: '' }))}
-              style={{
-                padding: '5px 7px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-                border: (!inputProps.musicMood && inputProps.musicUrl === '') ? '1px solid rgba(125,211,252,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                background: (!inputProps.musicMood && inputProps.musicUrl === '') ? 'rgba(125,211,252,0.15)' : 'rgba(255,255,255,0.04)',
-                color: 'rgba(241,245,249,0.4)',
-              }}>✕</button>
-          </div>
+          {/* Music mood — only shown when at least one NEXT_PUBLIC_MUSIC_*_URL env var is set */}
+          {Object.values(MUSIC_MOODS).some((m) => !m.url.startsWith('/music/')) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 4 }}>
+              <span style={{ fontSize: 10, color: 'rgba(241,245,249,0.3)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Music</span>
+              {(Object.entries(MUSIC_MOODS) as [MusicMood, typeof MUSIC_MOODS[MusicMood]][]).map(([mood, preset]) => {
+                if (preset.url.startsWith('/music/')) return null
+                const active = (inputProps.musicMood ?? DEFAULT_MOOD) === mood
+                return (
+                  <button key={mood} title={`${preset.label} — ${preset.description}`}
+                    onClick={() => setInputProps((p) => ({ ...p, musicMood: mood }))}
+                    style={{
+                      padding: '5px 9px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                      border: active ? '1px solid rgba(125,211,252,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      background: active ? 'rgba(125,211,252,0.15)' : 'rgba(255,255,255,0.04)',
+                      color: active ? '#7dd3fc' : 'rgba(241,245,249,0.55)',
+                      transition: 'all 0.15s',
+                    }}>
+                    {preset.emoji}
+                  </button>
+                )
+              })}
+              <button title="No music"
+                onClick={() => setInputProps((p) => ({ ...p, musicMood: undefined, musicUrl: '' }))}
+                style={{
+                  padding: '5px 7px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                  border: (!inputProps.musicMood && inputProps.musicUrl === '') ? '1px solid rgba(125,211,252,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                  background: (!inputProps.musicMood && inputProps.musicUrl === '') ? 'rgba(125,211,252,0.15)' : 'rgba(255,255,255,0.04)',
+                  color: 'rgba(241,245,249,0.4)',
+                }}>✕</button>
+            </div>
+          )}
         </div>
 
         {/* Scene editor */}
@@ -435,7 +438,17 @@ function ToggleChip({ label, active, onClick }: { label: string; active: boolean
 
 function SceneUIEditor({ scenes, onChange }: { scenes: Scene[]; onChange: (scenes: Scene[]) => void }) {
   const update = (idx: number, field: keyof Scene, value: string | number) => {
-    onChange(scenes.map((s, i) => (i === idx ? { ...s, [field]: value } : s)))
+    const updated = scenes.map((s, i) => (i === idx ? { ...s, [field]: value } : s))
+    if (field === 'duration') {
+      let cumulative = 0
+      onChange(updated.map((s) => {
+        const scene = { ...s, start_time: cumulative }
+        cumulative += s.duration
+        return scene
+      }))
+    } else {
+      onChange(updated)
+    }
   }
 
   return (
@@ -467,9 +480,9 @@ function SceneUIEditor({ scenes, onChange }: { scenes: Scene[]; onChange: (scene
           </div>
           <div>
             <label style={{ fontSize: 10, color: 'rgba(241,245,249,0.3)', display: 'block', marginBottom: 5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Start</label>
-            <input className="glass-input" type="number" value={scene.start_time} min={0}
-              onChange={(e) => update(idx, 'start_time', Number(e.target.value))}
-              style={{ width: '100%', boxSizing: 'border-box' }} />
+            <div className="glass-input" style={{ width: '100%', boxSizing: 'border-box', color: 'rgba(241,245,249,0.4)', cursor: 'default' }}>
+              {scene.start_time}s
+            </div>
           </div>
         </div>
       ))}

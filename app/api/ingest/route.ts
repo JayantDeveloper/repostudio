@@ -1,6 +1,7 @@
 export const maxDuration = 300
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { appendLog } from '@/lib/logs'
 import { supabaseAdmin } from '@/lib/supabase'
 import type { BrandColors } from '@/lib/types'
@@ -139,8 +140,19 @@ function detectBrandColors(files: { path: string; content: string }[]): BrandCol
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { github_url, job_id, demo_url_override } = await req.json() as { github_url: string; job_id: string; demo_url_override?: string }
+
+  if (!github_url || !github_url.startsWith('https://github.com/')) {
+    return NextResponse.json({ error: 'Only github.com URLs are supported' }, { status: 400 })
+  }
+
   const [owner, repo] = parseOwnerRepo(github_url)
+  if (!owner || !repo) {
+    return NextResponse.json({ error: 'Invalid GitHub URL — expected https://github.com/owner/repo' }, { status: 400 })
+  }
   const repoName = repo || github_url.split('/').pop() || 'project'
 
   appendLog(job_id, 'Firecrawl', `Ingesting ${github_url}...`)

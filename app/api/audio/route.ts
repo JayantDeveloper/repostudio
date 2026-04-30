@@ -1,6 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { appendLog } from '@/lib/logs'
 import { generateFakeTimestamps } from '@/lib/fakeTimestamps'
 import type { Scene, WordTimestamp } from '@/lib/types'
@@ -124,6 +125,9 @@ async function callNimTts(
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { scenes, job_id } = await req.json() as { scenes: Scene[]; job_id: string }
 
   try {

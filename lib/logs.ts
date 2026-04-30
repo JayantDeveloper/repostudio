@@ -19,7 +19,13 @@ export function getLogs(job_id: string): LogLine[] {
 }
 
 export async function getLogsFromDB(job_id: string): Promise<LogLine[]> {
-  if (!supabaseAdmin) return getLogs(job_id)
+  if (!supabaseAdmin) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('getLogsFromDB: supabaseAdmin not configured — logs unavailable in production')
+      return []
+    }
+    return getLogs(job_id)
+  }
   const { data } = await supabaseAdmin
     .from('logs')
     .select('ts,tag,message')

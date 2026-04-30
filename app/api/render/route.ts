@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       codec: 'h264',
       outputLocation: outPath,
       inputProps: props,
-      chromiumOptions: { disableWebSecurity: true },
+      chromiumOptions: {},
       timeoutInMilliseconds: 240_000,
     })
 

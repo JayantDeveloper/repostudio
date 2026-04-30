@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { appendLog } from '@/lib/logs'
 import { validateScenes, buildFallbackScenes } from '@/lib/scenes'
 import type { Scene } from '@/lib/types'
@@ -124,6 +125,9 @@ async function callGemini(
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const {
     readme,
     github_url,

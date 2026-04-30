@@ -140,6 +140,23 @@ export async function getVideoJob(id: string, userId: string): Promise<VideoJobR
   return job?.user_id === userId ? job : null
 }
 
+export async function deleteVideoJob(id: string, userId: string): Promise<boolean> {
+  if (supabaseAdmin) {
+    const { error } = await supabaseAdmin
+      .from('video_jobs')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+    if (!error) return true
+  }
+  const job = fallbackJobs.get(id)
+  if (job?.user_id === userId) {
+    fallbackJobs.delete(id)
+    return true
+  }
+  return false
+}
+
 export async function updateVideoJob(
   id: string,
   userId: string,

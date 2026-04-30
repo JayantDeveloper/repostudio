@@ -15,8 +15,8 @@ function validateSceneNumber(value: unknown, field: 'duration' | 'start_time', i
 }
 
 export function validateScenes(raw: unknown): Scene[] {
-  if (!Array.isArray(raw) || raw.length !== 4)
-    throw new Error(`Expected 4 scenes, got ${Array.isArray(raw) ? raw.length : 'non-array'}`)
+  if (!Array.isArray(raw) || raw.length < 2)
+    throw new Error(`Expected at least 2 scenes, got ${Array.isArray(raw) ? raw.length : 'non-array'}`)
 
   const scenes = (raw as Record<string, unknown>[]).map((s, i) => {
     if (!String(s.text ?? '').trim()) throw new Error(`Scene ${i} missing text`)

@@ -175,6 +175,10 @@ export function useVideoGenerator({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ github_url: targetUrl, job_id: jobId, demo_url_override: initialDemoUrl }),
       })
+      if (!ingestRes.ok) {
+        const body = await ingestRes.json().catch(() => ({}))
+        throw new Error(body.error ?? `Ingest failed (${ingestRes.status})`)
+      }
       const { readme, source_files, screenshot_urls, demo_video_url, brand_colors, repo_name, demo_url } = await ingestRes.json()
 
       setStatus('scripting')
@@ -185,6 +189,10 @@ export function useVideoGenerator({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ readme, source_files, github_url: targetUrl, job_id: jobId }),
       })
+      if (!scriptRes.ok) {
+        const body = await scriptRes.json().catch(() => ({}))
+        throw new Error(body.error ?? `Script generation failed (${scriptRes.status})`)
+      }
       const { scenes } = await scriptRes.json()
 
       setStatus('audio')
@@ -195,6 +203,10 @@ export function useVideoGenerator({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scenes, job_id: jobId }),
       })
+      if (!audioRes.ok) {
+        const body = await audioRes.json().catch(() => ({}))
+        throw new Error(body.error ?? `Audio synthesis failed (${audioRes.status})`)
+      }
       const { audioUrl, wordTimestamps } = await audioRes.json()
 
       stopPoll()

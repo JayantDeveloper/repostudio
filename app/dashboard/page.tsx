@@ -1,11 +1,40 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { CreateVideoModal } from '@/components/CreateVideoModal'
 import { ProfileMenu } from '@/components/ProfileMenu'
 import { DbSetupBanner } from '@/components/DbSetupBanner'
 import { buildFallbackScenes } from '@/lib/scenes'
-import { createVideoJob, listVideoJobs } from '@/lib/videoJobs'
+import { createVideoJob, listVideoJobs, deleteVideoJob } from '@/lib/videoJobs'
+import type { VideoJobStatus } from '@/lib/types'
+
+async function deleteProject(formData: FormData) {
+  'use server'
+
+  const session = await auth()
+  if (!session?.user?.id) return
+
+  const id = String(formData.get('id') ?? '')
+  if (id) {
+    await deleteVideoJob(id, session.user.id)
+    revalidatePath('/dashboard')
+  }
+}
+
+function statusProgress(status: VideoJobStatus): number {
+  const map: Record<VideoJobStatus, number> = {
+    ingesting: 20,
+    scripting: 40,
+    audio: 60,
+    face: 70,
+    ready: 80,
+    rendering: 90,
+    done: 100,
+    error: 0,
+  }
+  return map[status] ?? 0
+}
 
 async function createMission(formData: FormData) {
   'use server'
@@ -129,14 +158,8 @@ export default async function DashboardPage() {
             <DbSetupBanner projectUrl={process.env.NEXT_PUBLIC_SUPABASE_URL} />
           )}
 
-          <div id="videos" className="mb-6 flex items-center justify-between">
+          <div id="videos" className="mb-6">
             <h2 className="text-2xl font-bold text-[#1d4ed8]">My Videos</h2>
-            <button className="flex items-center gap-2 rounded-lg border-2 border-[#1d4ed8]/30 bg-white px-3 py-2 text-sm font-semibold text-[#1d4ed8] shadow-sm">
-              Sort by
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
           </div>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -153,38 +176,52 @@ export default async function DashboardPage() {
               </div>
             ) : (
               projects.map((project) => (
-                <Link key={project.id} href={`/editor/${project.id}`} className="group overflow-hidden rounded-xl border border-white/70 bg-white/80 no-underline shadow-md backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-[#35d6ff] hover:shadow-xl">
-                  <div className="aspect-video overflow-hidden bg-gradient-to-br from-[#35d6ff]/25 via-[#f6fbff] to-[#1d4ed8]/20 p-4">
-                    <div className="flex h-full flex-col justify-between rounded-lg border border-[#1d4ed8]/15 bg-white/80 p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="rounded-full bg-[#1d4ed8] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-                          {project.status}
+                <div key={project.id} className="group overflow-hidden rounded-xl border border-white/70 bg-white/80 shadow-md backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-[#35d6ff] hover:shadow-xl">
+                  <Link href={`/editor/${project.id}`} className="block no-underline">
+                    <div className="aspect-video overflow-hidden bg-gradient-to-br from-[#35d6ff]/25 via-[#f6fbff] to-[#1d4ed8]/20 p-4">
+                      <div className="flex h-full flex-col justify-between rounded-lg border border-[#1d4ed8]/15 bg-white/80 p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-full bg-[#1d4ed8] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                            {project.status}
+                          </span>
+                          <VideoIcon className="h-6 w-6 text-[#1d4ed8]" />
+                        </div>
+                        <div className="h-2 rounded-full bg-[#35d6ff]/40">
+                          <div className="h-2 rounded-full bg-[#1d4ed8] transition-all" style={{ width: `${statusProgress(project.status)}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="mb-1 overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-[#1d4ed8]">
+                        {project.repo_url.replace(/^https?:\/\//, '')}
+                      </h3>
+                      <p className="text-sm text-[#1d4ed8]/70">
+                        {project.scenes.length} scenes
+                        {project.updated_at ? ` · Modified ${new Date(project.updated_at).toLocaleDateString()}` : ''}
+                      </p>
+                      <div className="mt-4 flex items-center justify-between gap-2">
+                        <span className="rounded-lg border border-[#1d4ed8]/30 bg-white px-3 py-1.5 text-sm font-semibold text-[#1d4ed8]">
+                          Edit
                         </span>
-                        <VideoIcon className="h-6 w-6 text-[#1d4ed8]" />
-                      </div>
-                      <div className="h-2 rounded-full bg-[#35d6ff]/40">
-                        <div className="h-2 w-2/3 rounded-full bg-[#1d4ed8]" />
+                        <span className="rounded-lg bg-gradient-to-r from-[#1d4ed8] to-[#2f7bff] px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
+                          Open
+                        </span>
                       </div>
                     </div>
+                  </Link>
+                  <div className="border-t border-[#1d4ed8]/10 px-4 py-2">
+                    <form action={deleteProject}>
+                      <input type="hidden" name="id" value={project.id} />
+                      <button
+                        type="submit"
+                        className="text-xs font-medium text-red-400 hover:text-red-600 transition-colors"
+                        onClick={(e) => { if (!confirm('Delete this project?')) e.preventDefault() }}
+                      >
+                        Delete
+                      </button>
+                    </form>
                   </div>
-                  <div className="p-4">
-                    <h3 className="mb-1 overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-[#1d4ed8]">
-                      {project.repo_url.replace(/^https?:\/\//, '')}
-                    </h3>
-                    <p className="text-sm text-[#1d4ed8]/70">
-                      {project.scenes.length} scenes
-                      {project.updated_at ? ` · Modified ${new Date(project.updated_at).toLocaleDateString()}` : ''}
-                    </p>
-                    <div className="mt-4 flex items-center justify-between gap-2">
-                      <span className="rounded-lg border border-[#1d4ed8]/30 bg-white px-3 py-1.5 text-sm font-semibold text-[#1d4ed8]">
-                        Edit
-                      </span>
-                      <span className="rounded-lg bg-gradient-to-r from-[#1d4ed8] to-[#2f7bff] px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
-                        Open
-                      </span>
-                    </div>
-                  </div>
-                </Link>
+                </div>
               ))
             )}
           </div>
